@@ -1,0 +1,22 @@
+# Blocklist Configuration File
+# List of known-malicious IOCs (one per line)
+# These IOCs should be flagged as high-risk
+
+# Known C2 Servers
+192.168.1.100
+10.0.0.1
+
+# Known Malware Domains
+malware.com
+evil.net
+phishing.example.com
+ransomware.biz
+
+# Known Malicious IPs
+203.0.113.0
+198.51.100.42
+
+# Known Malicious Hashes (Examples - not real malware)
+# d41d8cd98f00b204e9800998ecf8427e
+# e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+

@@ -1,0 +1,61 @@
+From: "Microsoft Security" <security@m1crosoft-support.com>
+To: user@company.com
+Subject: Urgent Action Required: Account Suspension Notice
+Date: Wed, 13 May 2026 10:15:00 +0000
+Message-ID: <123456789@mail.fake>
+Return-Path: <security@m1crosoft-support.com>
+Authentication-Results: spf=fail dkim=fail dmarc=fail
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="boundary123"
+
+Received: from unknown-host.ru (185.199.110.153)
+ by mail.company.com with ESMTP; Wed, 13 May 2026 10:15:02 +0000
+Received: from attacker-machine (10.0.0.5)
+ by unknown-host.ru with SMTP; Wed, 13 May 2026 10:14:59 +0000
+
+--boundary123
+Content-Type: text/plain; charset="UTF-8"
+
+Dear User,
+
+Your Microsoft account has been temporarily suspended.
+
+Please verify your account immediately:
+https://secure-login-microsoft-support.ru/login
+
+If you fail to verify within 24 hours, your account will be permanently deleted.
+
+Thank you,
+Microsoft Security Team
+
+--boundary123
+Content-Type: text/html; charset="UTF-8"
+
+<html>
+<body>
+<p>Dear User,</p>
+
+<p>Your account has been <b>suspended</b>. Please verify immediately.</p>
+
+<p>
+Click here to verify:
+<a href="http://malicious-login.ru/verify">https://login.microsoft.com</a>
+</p>
+
+<!-- Hidden phishing content -->
+<p style="display:none;">http://hidden-malicious.ru/steal-data</p>
+
+<p>Alternative link:</p>
+<a href="https://backup-login.evil.com/reset">Verify Account</a>
+
+<p>Or copy this link:</p>
+<p>http://another-bad-domain.cn/login</p>
+
+<br>
+<p>Thank you,<br>Microsoft Security Team</p>
+
+</body>
+</html>
+
+--boundary123--

@@ -1,0 +1,17 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/c:\\Users\\ankit.gp.kumar\\AppData\\Local\\Temp\\abf31fe5-d4b3-451a-ace7-60ce76406d54_Resume.zip.d54\\main.aux": true,
+        "**/c:\\Users\\ankit.gp.kumar\\AppData\\Local\\Temp\\abf31fe5-d4b3-451a-ace7-60ce76406d54_Resume.zip.d54\\main.log": true,
+        "**/c:\\Users\\ankit.gp.kumar\\AppData\\Local\\Temp\\abf31fe5-d4b3-451a-ace7-60ce76406d54_Resume.zip.d54\\main.gz": true,
+        "**/c:\\Users\\ankit.gp.kumar\\AppData\\Local\\Temp\\abf31fe5-d4b3-451a-ace7-60ce76406d54_Resume.zip.d54\\main.out": true,
+        "**/c:\\Users\\ankit.gp.kumar\\OneDrive - Accenture\\Desktop\\Personal\\Resume\\main.aux": true,
+        "**/c:\\Users\\ankit.gp.kumar\\OneDrive - Accenture\\Desktop\\Personal\\Resume\\main.log": true,
+        "**/c:\\Users\\ankit.gp.kumar\\OneDrive - Accenture\\Desktop\\Personal\\Resume\\main.gz": true,
+        "**/c:\\Users\\ankit.gp.kumar\\OneDrive - Accenture\\Desktop\\Personal\\Resume\\main.out": true
+    }
+}

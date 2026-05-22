@@ -1,0 +1,26 @@
+# Whitelist Configuration File
+# List of known-safe IOCs (one per line)
+# These IOCs will be filtered out from reports
+
+# Common DNS Servers
+8.8.8.8
+8.8.4.4
+1.1.1.1
+1.0.0.1
+
+# Common Tech Companies
+google.com
+microsoft.com
+apple.com
+amazon.com
+cloudflare.com
+github.com
+
+# Common CDNs
+cloudfront.amazonaws.com
+akamai.com
+fastly.com
+
+# Localhost
+127.0.0.1
+localhost

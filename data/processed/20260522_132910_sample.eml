@@ -1,0 +1,84 @@
+From: "Microsoft Security Team" <security@m1crosoft-support.com>
+To: ankit.kumar@company.com
+Subject: Urgent: Verify your account - CVE-2025-12345 reference inside
+Date: Wed, 13 May 2026 10:15:00 +0000
+Message-ID: <phish-sample-20260513.101500@mail.fake>
+Return-Path: <bounce@m1crosoft-support.com>
+MIME-Version: 1.0
+Authentication-Results: mx.company.com; spf=fail smtp.mailfrom=m1crosoft-support.com; dkim=fail header.d=m1crosoft-support.com; dmarc=fail action=quarantine header.from=m1crosoft-support.com
+Content-Type: multipart/mixed; boundary="mix-boundary-001"
+
+Received: from unknown-host.ru (185.199.110.153) by mx.company.com with ESMTP id ABC123; Wed, 13 May 2026 10:15:02 +0000
+Received: from attacker-machine (10.0.0.5) by unknown-host.ru with SMTP id XYZ987; Wed, 13 May 2026 10:14:59 +0000
+
+--mix-boundary-001
+Content-Type: multipart/alternative; boundary="alt-boundary-001"
+
+--alt-boundary-001
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+Dear User,
+
+We detected unusual sign-in attempts from IP 203.0.113.45 and 185.199.110.153.
+To avoid account suspension, please verify your identity immediately.
+
+Primary verification link:
+https://secure-login-microsoft-support.ru/login?session=abc123
+
+Backup link:
+http://another-bad-domain.cn/login
+
+Indicator samples (for IOC extraction testing):
+- Domain: update.office365-security-check.com
+- Email: helpdesk@evil-example.com
+- Hash (MD5): d41d8cd98f00b204e9800998ecf8427e
+- Hash (SHA1): da39a3ee5e6b4b0d3255bfef95601890afd80709
+- Hash (SHA256): e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- CVE: CVE-2025-12345
+
+Thank you,
+Microsoft Security Team
+
+--alt-boundary-001
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+
+<html>
+  <body>
+    <p>Dear User,</p>
+    <p>We detected unusual sign-in attempts. Please verify immediately to avoid suspension.</p>
+
+    <p>
+      <!-- Mismatched anchor text vs href (common phishing trick) -->
+      Verify now: <a href="http://malicious-login.ru/verify">https://login.microsoft.com</a>
+    </p>
+
+    <p>Alternative link: <a href="https://backup-login.evil.com/reset">Verify Account</a></p>
+
+    <p>Raw URL in HTML (regex should catch): https://secure-login-microsoft-support.ru/login</p>
+
+    <!-- Hidden phishing content -->
+    <p style="display:none">http://hidden-malicious.ru/steal-data</p>
+    <span style="visibility:hidden">CVE-2025-12345</span>
+    <span style="font-size:0">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
+
+    <p>Suspicious IP mention: 203.0.113.45</p>
+    <p>Suspicious domain mention: update.office365-security-check.com</p>
+
+    <img src="http://tracking.evil-example.com/pixel.png" width="1" height="1" />
+
+    <p>Regards,<br/>Microsoft Security Team</p>
+  </body>
+</html>
+
+--alt-boundary-001--
+
+--mix-boundary-001
+Content-Type: text/plain; name="invoice_2026.txt"
+Content-Disposition: attachment; filename="invoice_2026.txt"
+Content-Transfer-Encoding: base64
+
+VGhpcyBpcyBhIHNhZmUgc2FtcGxlIGF0dGFjaG1lbnQgZm9yIHRlc3RpbmcgZW1haWwgcGFyc2VyIGFuZCBoYXNoaW5nLgpGaWxlbmFtZTogaW52b2ljZV8yMDI2LnR4dApOb3RoaW5nIG1hbGljaW91cyBoZXJlLgo=
+
+--mix-boundary-001--

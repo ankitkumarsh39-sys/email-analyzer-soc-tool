@@ -1,0 +1,15 @@
+# IOC Validator Library - Requirements
+
+# Core Dependencies
+iocextract>=1.14.0
+requests>=2.28.0
+
+# Optional (for email analysis integration)
+mailparser>=1.1.27
+beautifulsoup4>=4.11.0
+
+# Development
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=23.0.0
+mailparser>=1.1.27
