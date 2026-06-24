@@ -1,0 +1,3635 @@
+{
+  "ip:185.173.111.45": {
+    "timestamp": "2026-06-24T21:23:34.667228",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 1,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=185.173.111.45"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:205.185.116.233": {
+    "timestamp": "2026-06-24T21:23:38.821810",
+    "data": {
+      "vt_malicious": 12,
+      "vt_status": "12 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 12",
+        "VirusTotal detections: 12, Blocklisted IOC - VirusTotal detections: 12, Blocklisted IOC - VirusTotal detections: 12, Blocklisted IOC - VirusTotal detections: 12, Blocklisted IOC - VirusTotal detections: 12, Blocklisted IOC - VirusTotal detections: 12, Blocklisted IOC - VirusTotal detections: 12"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=205.185.116.233"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "domain:company.com": {
+    "timestamp": "2026-06-24T21:23:43.210639",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=company.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=company.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-07-08 04:00:00",
+          "age_days": 11674,
+          "registrar": "GoDaddy.com, LLC",
+          "expires": "2035-05-27 22:20:40",
+          "nameservers": [
+            "DAISY.NS.CLOUDFLARE.COM",
+            "MUSTAFA.NS.CLOUDFLARE.COM"
+          ],
+          "remaining_requests": "807"
+        }
+      }
+    }
+  },
+  "domain:evil-domain.com": {
+    "timestamp": "2026-06-24T21:23:48.722278",
+    "data": {
+      "vt_malicious": 3,
+      "vt_status": "3 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 3",
+        "VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=evil-domain.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=evil-domain.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2026-02-12 21:24:10",
+          "age_days": 131,
+          "registrar": "Network Solutions, LLC",
+          "expires": "2027-02-12 21:24:10",
+          "nameservers": [
+            "HGNS1.HOSTGATOR.COM",
+            "HGNS2.HOSTGATOR.COM"
+          ],
+          "remaining_requests": "806"
+        }
+      }
+    }
+  },
+  "domain:fake-login.microsoft.com": {
+    "timestamp": "2026-06-24T21:23:53.393576",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 50,
+      "category": "Malicious",
+      "reason": [
+        "Blocklisted IOC - Blocklisted IOC - Blocklisted IOC - Phishing keyword in domain, Brand impersonation detected (Microsoft), Phishing keyword in domain, Phishing keyword in domain, Phishing keyword in domain",
+        "Phishing keyword in domain",
+        "Brand impersonation detected (Microsoft)"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=fake-login.microsoft.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=fake-login.microsoft.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1991-05-02 04:00:00",
+          "age_days": 12837,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2027-05-03 04:00:00",
+          "nameservers": [
+            "ns1-39.azure-dns.com",
+            "ns2-39.azure-dns.net",
+            "ns3-39.azure-dns.org",
+            "ns4-39.azure-dns.info"
+          ],
+          "remaining_requests": "805"
+        }
+      }
+    }
+  },
+  "domain:fake-mailer.com": {
+    "timestamp": "2026-06-24T21:23:58.214190",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=fake-mailer.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=fake-mailer.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2025-06-13 02:48:57",
+          "age_days": 376,
+          "registrar": "DYNADOT LLC",
+          "expires": "2027-06-13 02:48:57",
+          "nameservers": [
+            "decker.ns.cloudflare.com",
+            "malavika.ns.cloudflare.com"
+          ],
+          "remaining_requests": "804"
+        }
+      }
+    }
+  },
+  "domain:lockbit7z2jwcskxpbokpemdxmltipntwlkmidcll2qirbu7ykg46eyd.onion": {
+    "timestamp": "2026-06-24T21:24:03.237142",
+    "data": {
+      "vt_malicious": 3,
+      "vt_status": "3 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 3",
+        "VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=lockbit7z2jwcskxpbokpemdxmltipntwlkmidcll2qirbu7ykg46eyd.onion"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=lockbit7z2jwcskxpbokpemdxmltipntwlkmidcll2qirbu7ykg46eyd.onion"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "803"
+        }
+      }
+    }
+  },
+  "domain:lockbit7z2mmiz3ryxafn5kapbvbbiywsxwovasfkgf5dqqp5kxlajad.onion": {
+    "timestamp": "2026-06-24T21:24:07.717976",
+    "data": {
+      "vt_malicious": 9,
+      "vt_status": "9 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 9",
+        "VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=lockbit7z2mmiz3ryxafn5kapbvbbiywsxwovasfkgf5dqqp5kxlajad.onion"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=lockbit7z2mmiz3ryxafn5kapbvbbiywsxwovasfkgf5dqqp5kxlajad.onion"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "802"
+        }
+      }
+    }
+  },
+  "domain:lockbit7z2og4jlsmdy7dzty3g42eu3gh2sx2b6ywtvhrjtss7li4fyd.onion": {
+    "timestamp": "2026-06-24T21:24:12.372832",
+    "data": {
+      "vt_malicious": 9,
+      "vt_status": "9 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 9",
+        "VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=lockbit7z2og4jlsmdy7dzty3g42eu3gh2sx2b6ywtvhrjtss7li4fyd.onion"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=lockbit7z2og4jlsmdy7dzty3g42eu3gh2sx2b6ywtvhrjtss7li4fyd.onion"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "801"
+        }
+      }
+    }
+  },
+  "domain:lockbit7z355oalq4hiy5p7de64l6rsqutwlvydqje56uvevcc57r6qd.onion": {
+    "timestamp": "2026-06-24T21:24:17.197595",
+    "data": {
+      "vt_malicious": 7,
+      "vt_status": "7 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 7",
+        "VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=lockbit7z355oalq4hiy5p7de64l6rsqutwlvydqje56uvevcc57r6qd.onion"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=lockbit7z355oalq4hiy5p7de64l6rsqutwlvydqje56uvevcc57r6qd.onion"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "800"
+        }
+      }
+    }
+  },
+  "domain:lockbitfbinpwhbyomxkiqtwhwiyetrbkb4hnqmshaonqxmsrqwg7yad.onion": {
+    "timestamp": "2026-06-24T21:24:21.785661",
+    "data": {
+      "vt_malicious": 11,
+      "vt_status": "11 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 11",
+        "VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=lockbitfbinpwhbyomxkiqtwhwiyetrbkb4hnqmshaonqxmsrqwg7yad.onion"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=lockbitfbinpwhbyomxkiqtwhwiyetrbkb4hnqmshaonqxmsrqwg7yad.onion"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "799"
+        }
+      }
+    }
+  },
+  "domain:lockbitsuppyx2jegaoyiw44ica5vdho63m5ijjlmfb7omq3tfr3qhyd.onion": {
+    "timestamp": "2026-06-24T21:24:26.472886",
+    "data": {
+      "vt_malicious": 8,
+      "vt_status": "8 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 8",
+        "VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=lockbitsuppyx2jegaoyiw44ica5vdho63m5ijjlmfb7omq3tfr3qhyd.onion"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=lockbitsuppyx2jegaoyiw44ica5vdho63m5ijjlmfb7omq3tfr3qhyd.onion"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "798"
+        }
+      }
+    }
+  },
+  "domain:malicious-domain.com": {
+    "timestamp": "2026-06-24T21:24:31.040136",
+    "data": {
+      "vt_malicious": 14,
+      "vt_status": "14 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 14",
+        "VirusTotal detections: 14, Blocklisted IOC - VirusTotal detections: 14, Blocklisted IOC - VirusTotal detections: 14, Blocklisted IOC - VirusTotal detections: 14, Blocklisted IOC - VirusTotal detections: 14, Blocklisted IOC - VirusTotal detections: 14, Blocklisted IOC - VirusTotal detections: 14"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=malicious-domain.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=malicious-domain.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2019-07-05 08:44:44",
+          "age_days": 2546,
+          "registrar": "Amazon Registrar, Inc.",
+          "expires": "2027-07-05 08:44:44",
+          "nameservers": [
+            "ns-1017.awsdns-63.net",
+            "ns-1227.awsdns-25.org",
+            "ns-1714.awsdns-22.co.uk",
+            "ns-25.awsdns-03.com"
+          ],
+          "remaining_requests": "797"
+        }
+      }
+    }
+  },
+  "domain:microsoft.com": {
+    "timestamp": "2026-06-24T21:24:34.801026",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=microsoft.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=microsoft.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1991-05-02 04:00:00",
+          "age_days": 12837,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2027-05-03 04:00:00",
+          "nameservers": [
+            "ns1-39.azure-dns.com",
+            "ns2-39.azure-dns.net",
+            "ns3-39.azure-dns.org",
+            "ns4-39.azure-dns.info"
+          ],
+          "remaining_requests": "796"
+        }
+      }
+    }
+  },
+  "domain:outlook.office365.com": {
+    "timestamp": "2026-06-24T21:24:39.860437",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=outlook.office365.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=outlook.office365.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2005-06-20 18:10:48",
+          "age_days": 7673,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2027-06-20 18:10:48",
+          "nameservers": [
+            "ns1-07.azure-dns.com",
+            "ns2-07.azure-dns.net",
+            "ns3-07.azure-dns.org",
+            "ns4-07.azure-dns.info"
+          ],
+          "remaining_requests": "795"
+        }
+      }
+    }
+  },
+  "domain:relay.mail-secure.net": {
+    "timestamp": "2026-06-24T21:24:44.259843",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 26,
+      "category": "Malicious",
+      "reason": [
+        "Blocklisted IOC - Blocklisted IOC - Blocklisted IOC - Phishing keyword in domain, Blocklisted IOC - Phishing keyword in domain, Blocklisted IOC - Phishing keyword in domain, Blocklisted IOC - Phishing keyword in domain, Phishing keyword in domain, Phishing keyword in domain, Phishing keyword in domain, Phishing keyword in domain",
+        "Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=relay.mail-secure.net"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=relay.mail-secure.net"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2005-04-05 16:59:39",
+          "age_days": 7749,
+          "registrar": "OVH, SAS",
+          "expires": "2027-04-05 16:59:39",
+          "nameservers": [
+            "dns14.ovh.net",
+            "ns14.ovh.net"
+          ],
+          "remaining_requests": "794"
+        }
+      }
+    }
+  },
+  "domain:rodericwalter.com": {
+    "timestamp": "2026-06-24T21:24:49.608669",
+    "data": {
+      "vt_malicious": 4,
+      "vt_status": "4 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 4",
+        "VirusTotal detections: 4, Blocklisted IOC - VirusTotal detections: 4, Blocklisted IOC - VirusTotal detections: 4, Blocklisted IOC - VirusTotal detections: 4, Blocklisted IOC - VirusTotal detections: 4, Blocklisted IOC - VirusTotal detections: 4, Blocklisted IOC - VirusTotal detections: 4"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=rodericwalter.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=rodericwalter.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2019-12-28 16:53:26",
+          "age_days": 2369,
+          "registrar": "FastDomain Inc.",
+          "expires": "2026-12-28 16:53:26",
+          "nameservers": [
+            "NS1.BLUEHOST-EXPIRED.DOMAINPARKINGSERVER.NET",
+            "NS2.BLUEHOST-EXPIRED.DOMAINPARKINGSERVER.NET"
+          ],
+          "remaining_requests": "793"
+        }
+      }
+    }
+  },
+  "domain:tracking.test": {
+    "timestamp": "2026-06-24T21:24:54.124630",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=tracking.test"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=tracking.test"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "792"
+        }
+      }
+    }
+  },
+  "url:http://fake-login.microsoft.com": {
+    "timestamp": "2026-06-24T21:25:01.589864",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 45,
+      "category": "Malicious",
+      "reason": [
+        "Blocklisted IOC - Blocklisted IOC - Blocklisted IOC - Phishing keyword in domain, Brand impersonation detected (Microsoft), Phishing keyword in domain, Phishing keyword in domain, Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//fake-login.microsoft.com"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://fake-login.microsoft.com/%6C%6F%67%69%6E": {
+    "timestamp": "2026-06-24T21:25:10.824243",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 45,
+      "category": "Malicious",
+      "reason": [
+        "Blocklisted IOC - Blocklisted IOC - Blocklisted IOC - Phishing keyword in domain, Brand impersonation detected (Microsoft), Phishing keyword in domain, Phishing keyword in domain, Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//fake-login.microsoft.com/%256C%256F%2567%2569%256E"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://lockbit7z2jwcskxpbokpemdxmltipntwlkmidcll2qirbu7ykg46eyd.onion/": {
+    "timestamp": "2026-06-24T21:25:18.510812",
+    "data": {
+      "vt_malicious": 4,
+      "vt_status": "4 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 4",
+        "VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3, Blocklisted IOC - VirusTotal detections: 3"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_403"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//lockbit7z2jwcskxpbokpemdxmltipntwlkmidcll2qirbu7ykg46eyd.onion/"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://lockbit7z2mmiz3ryxafn5kapbvbbiywsxwovasfkgf5dqqp5kxlajad.onion/": {
+    "timestamp": "2026-06-24T21:25:26.546090",
+    "data": {
+      "vt_malicious": 10,
+      "vt_status": "10 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 10",
+        "VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_403"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//lockbit7z2mmiz3ryxafn5kapbvbbiywsxwovasfkgf5dqqp5kxlajad.onion/"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://lockbit7z2og4jlsmdy7dzty3g42eu3gh2sx2b6ywtvhrjtss7li4fyd.onion/": {
+    "timestamp": "2026-06-24T21:25:34.088786",
+    "data": {
+      "vt_malicious": 10,
+      "vt_status": "10 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 10",
+        "VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_403"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//lockbit7z2og4jlsmdy7dzty3g42eu3gh2sx2b6ywtvhrjtss7li4fyd.onion/"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://lockbit7z355oalq4hiy5p7de64l6rsqutwlvydqje56uvevcc57r6qd.onion/": {
+    "timestamp": "2026-06-24T21:25:41.421367",
+    "data": {
+      "vt_malicious": 8,
+      "vt_status": "8 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 8",
+        "VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7, Blocklisted IOC - VirusTotal detections: 7"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_403"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//lockbit7z355oalq4hiy5p7de64l6rsqutwlvydqje56uvevcc57r6qd.onion/"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://lockbitfbinpwhbyomxkiqtwhwiyetrbkb4hnqmshaonqxmsrqwg7yad.onion/": {
+    "timestamp": "2026-06-24T21:25:49.534822",
+    "data": {
+      "vt_malicious": 11,
+      "vt_status": "11 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 11",
+        "VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11, Blocklisted IOC - VirusTotal detections: 11"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_403"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//lockbitfbinpwhbyomxkiqtwhwiyetrbkb4hnqmshaonqxmsrqwg7yad.onion/"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://lockbitsuppyx2jegaoyiw44ica5vdho63m5ijjlmfb7omq3tfr3qhyd.onion": {
+    "timestamp": "2026-06-24T21:25:57.484429",
+    "data": {
+      "vt_malicious": 9,
+      "vt_status": "9 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 9",
+        "VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9, Blocklisted IOC - VirusTotal detections: 9"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_403"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//lockbitsuppyx2jegaoyiw44ica5vdho63m5ijjlmfb7omq3tfr3qhyd.onion"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://tracking.test/pixel?id\u0012345%2E%2E%2F": {
+    "timestamp": "2026-06-24T21:26:04.514055",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//tracking.test/pixel%3Fid%12345%252E%252E%252F"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "hash:180e93a091f8ab584a827da92c560c78f468c45f2539f73ab2deb308fb837b38": {
+    "timestamp": "2026-06-24T21:26:06.249373",
+    "data": {
+      "vt_malicious": 57,
+      "vt_status": "57 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 57",
+        "VirusTotal detections: 54, Blocklisted IOC - VirusTotal detections: 54, Blocklisted IOC - VirusTotal detections: 54, Blocklisted IOC - VirusTotal detections: 54, Blocklisted IOC - VirusTotal detections: 54, Blocklisted IOC - VirusTotal detections: 54, Blocklisted IOC - VirusTotal detections: 54"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {},
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "hash:4dc06ecee904b9165fa699b026045c1b6408cc7061df3d2a7bc2b7b4f0879f4d": {
+    "timestamp": "2026-06-24T21:26:08.156404",
+    "data": {
+      "vt_malicious": 33,
+      "vt_status": "33 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 33",
+        "VirusTotal detections: 15, Blocklisted IOC - VirusTotal detections: 15, Blocklisted IOC - VirusTotal detections: 15, Blocklisted IOC - VirusTotal detections: 15, Blocklisted IOC - VirusTotal detections: 15, Blocklisted IOC - VirusTotal detections: 15, Blocklisted IOC - VirusTotal detections: 15"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {},
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "hash:7ea5afbc166c4e23498aa9747be81ceaf8dad90b8daa07a6e4644dc7c2277b82": {
+    "timestamp": "2026-06-24T21:26:09.649263",
+    "data": {
+      "vt_malicious": 56,
+      "vt_status": "56 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 56",
+        "VirusTotal detections: 52, Blocklisted IOC - VirusTotal detections: 52, Blocklisted IOC - VirusTotal detections: 52, Blocklisted IOC - VirusTotal detections: 52, Blocklisted IOC - VirusTotal detections: 52, Blocklisted IOC - VirusTotal detections: 52, Blocklisted IOC - VirusTotal detections: 52"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {},
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "hash:98d8c7870c8e99ca6c8c25bb9ef79f71c25912fbb65698a9a6f22709b8ad34b6": {
+    "timestamp": "2026-06-24T21:26:11.249677",
+    "data": {
+      "vt_malicious": 26,
+      "vt_status": "26 hits",
+      "final_score": 10,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 26",
+        "VirusTotal detections: 30, Blocklisted IOC - VirusTotal detections: 30, Blocklisted IOC - VirusTotal detections: 30, Blocklisted IOC - VirusTotal detections: 30, Blocklisted IOC - VirusTotal detections: 30, Blocklisted IOC - VirusTotal detections: 30, Blocklisted IOC - VirusTotal detections: 30"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {},
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:185.199.110.153": {
+    "timestamp": "2026-06-22T14:04:58.399412",
+    "data": {
+      "vt_malicious": 1,
+      "vt_status": "1 hits",
+      "final_score": 3,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 1"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 34,
+          "abuse_reports": 35,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=185.199.110.153"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:203.0.113.45": {
+    "timestamp": "2026-06-22T14:05:02.231902",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 6,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=203.0.113.45"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "domain:ankit.kumar": {
+    "timestamp": "2026-06-22T14:05:06.744035",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ankit.kumar"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ankit.kumar"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "861"
+        }
+      }
+    }
+  },
+  "domain:another-bad-domain.cn": {
+    "timestamp": "2026-06-22T14:05:13.212063",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=another-bad-domain.cn"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=another-bad-domain.cn"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "860"
+        }
+      }
+    }
+  },
+  "domain:backup-login.evil.com": {
+    "timestamp": "2026-06-22T14:05:18.119010",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 2,
+      "category": "Clean",
+      "reason": [
+        "Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=backup-login.evil.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=backup-login.evil.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1995-04-10 04:00:00",
+          "age_days": 11396,
+          "registrar": "Network Solutions, LLC",
+          "expires": "2031-04-11 04:00:00",
+          "nameservers": [
+            "NS1.VERIO.COM",
+            "NS2.VERIO.COM"
+          ],
+          "remaining_requests": "859"
+        }
+      }
+    }
+  },
+  "domain:evil-example.com": {
+    "timestamp": "2026-06-22T14:05:21.049067",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=evil-example.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=evil-example.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2024-09-17 16:55:23",
+          "age_days": 642,
+          "registrar": "GoDaddy.com, LLC",
+          "expires": "2026-09-17 16:55:23",
+          "nameservers": [
+            "NS41.DOMAINCONTROL.COM",
+            "NS42.DOMAINCONTROL.COM"
+          ],
+          "remaining_requests": "858"
+        }
+      }
+    }
+  },
+  "domain:header.from": {
+    "timestamp": "2026-06-22T14:05:24.051360",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=header.from"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=header.from"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "857"
+        }
+      }
+    }
+  },
+  "domain:hidden-malicious.ru": {
+    "timestamp": "2026-06-22T14:05:27.210424",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=hidden-malicious.ru"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=hidden-malicious.ru"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "856"
+        }
+      }
+    }
+  },
+  "domain:login.microsoft.com": {
+    "timestamp": "2026-06-22T14:05:31.272968",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 2,
+      "category": "Clean",
+      "reason": [
+        "Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=login.microsoft.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=login.microsoft.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1991-05-02 04:00:00",
+          "age_days": 12835,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2027-05-03 04:00:00",
+          "nameservers": [
+            "ns1-39.azure-dns.com",
+            "ns2-39.azure-dns.net",
+            "ns3-39.azure-dns.org",
+            "ns4-39.azure-dns.info"
+          ],
+          "remaining_requests": "855"
+        }
+      }
+    }
+  },
+  "domain:m1crosoft-support.com": {
+    "timestamp": "2026-06-22T14:05:34.310573",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=m1crosoft-support.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=m1crosoft-support.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "854"
+        }
+      }
+    }
+  },
+  "domain:mail.fake": {
+    "timestamp": "2026-06-22T14:05:37.743452",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mail.fake"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mail.fake"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "853"
+        }
+      }
+    }
+  },
+  "domain:malicious-login.ru": {
+    "timestamp": "2026-06-22T14:05:41.694048",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 2,
+      "category": "Clean",
+      "reason": [
+        "Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=malicious-login.ru"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=malicious-login.ru"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "852"
+        }
+      }
+    }
+  },
+  "domain:mx.company.com": {
+    "timestamp": "2026-06-22T14:05:45.298660",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mx.company.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mx.company.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-07-08 04:00:00",
+          "age_days": 11672,
+          "registrar": "GoDaddy.com, LLC",
+          "expires": "2035-05-27 22:20:40",
+          "nameservers": [
+            "DAISY.NS.CLOUDFLARE.COM",
+            "MUSTAFA.NS.CLOUDFLARE.COM"
+          ],
+          "remaining_requests": "851"
+        }
+      }
+    }
+  },
+  "domain:secure-login-microsoft-support.ru": {
+    "timestamp": "2026-06-22T14:05:50.676477",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 2,
+      "category": "Clean",
+      "reason": [
+        "Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=secure-login-microsoft-support.ru"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=secure-login-microsoft-support.ru"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "850"
+        }
+      }
+    }
+  },
+  "domain:smtp.mailfrom": {
+    "timestamp": "2026-06-22T14:05:53.821334",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=smtp.mailfrom"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=smtp.mailfrom"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "849"
+        }
+      }
+    }
+  },
+  "domain:tracking.evil-example.com": {
+    "timestamp": "2026-06-22T14:05:56.639068",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=tracking.evil-example.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=tracking.evil-example.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2024-09-17 16:55:23",
+          "age_days": 642,
+          "registrar": "GoDaddy.com, LLC",
+          "expires": "2026-09-17 16:55:23",
+          "nameservers": [
+            "NS41.DOMAINCONTROL.COM",
+            "NS42.DOMAINCONTROL.COM"
+          ],
+          "remaining_requests": "848"
+        }
+      }
+    }
+  },
+  "domain:update.office365-security-check.com": {
+    "timestamp": "2026-06-22T14:05:59.437368",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=update.office365-security-check.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=update.office365-security-check.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "847"
+        }
+      }
+    }
+  },
+  "url:http://another-bad-domain.cn/login": {
+    "timestamp": "2026-06-22T14:06:14.397390",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//another-bad-domain.cn/login"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://hidden-malicious.ru/steal-data": {
+    "timestamp": "2026-06-22T14:06:22.614225",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//hidden-malicious.ru/steal-data"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://malicious-login.ru/verify": {
+    "timestamp": "2026-06-22T14:06:31.098257",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//malicious-login.ru/verify"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://tracking.evil-example.com/pixel.png": {
+    "timestamp": "2026-06-22T14:06:37.694605",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//tracking.evil-example.com/pixel.png"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:https://backup-login.evil.com/reset": {
+    "timestamp": "2026-06-22T14:06:44.397201",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=https%3A//backup-login.evil.com/reset"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:https://login.microsoft.com": {
+    "timestamp": "2026-06-22T14:06:51.546063",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "scan_id": "019eee79-a003-75c7-85ed-f24c2ee8250b",
+          "source": "urlscan",
+          "status": "submitted",
+          "raw": {
+            "message": "Submission successful",
+            "uuid": "019eee79-a003-75c7-85ed-f24c2ee8250b",
+            "result": "https://urlscan.io/result/019eee79-a003-75c7-85ed-f24c2ee8250b/",
+            "api": "https://urlscan.io/api/v1/result/019eee79-a003-75c7-85ed-f24c2ee8250b/",
+            "visibility": "unlisted",
+            "options": {},
+            "url": "https://login.microsoft.com/",
+            "country": "nl"
+          }
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=https%3A//login.microsoft.com"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:https://secure-login-microsoft-support.ru/login": {
+    "timestamp": "2026-06-22T14:06:59.476997",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=https%3A//secure-login-microsoft-support.ru/login"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:https://secure-login-microsoft-support.ru/login?session=abc123": {
+    "timestamp": "2026-06-22T14:07:05.983538",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=https%3A//secure-login-microsoft-support.ru/login%3Fsession%3Dabc123"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "hash:d41d8cd98f00b204e9800998ecf8427e": {
+    "timestamp": "2026-06-22T14:07:07.696819",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {},
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "hash:da39a3ee5e6b4b0d3255bfef95601890afd80709": {
+    "timestamp": "2026-06-22T14:07:09.238564",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {},
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "hash:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": {
+    "timestamp": "2026-06-22T14:07:10.773383",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {},
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:10.161.17.75": {
+    "timestamp": "2026-06-22T14:23:49.158943",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=10.161.17.75"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:121.0.0.1": {
+    "timestamp": "2026-06-22T14:23:53.462994",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=121.0.0.1"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:142.163.159.10": {
+    "timestamp": "2026-06-22T14:23:57.235306",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=142.163.159.10"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:148.163.159.10": {
+    "timestamp": "2026-06-22T14:24:01.055903",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=148.163.159.10"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:17.12.100.49": {
+    "timestamp": "2026-06-22T14:24:05.029885",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=17.12.100.49"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:171.19.147.195": {
+    "timestamp": "2026-06-22T14:24:10.638625",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=171.19.147.195"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:51.1.96.230": {
+    "timestamp": "2026-06-22T14:24:14.661292",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=51.1.96.230"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:52.1.96.230": {
+    "timestamp": "2026-06-22T14:24:18.371857",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=52.1.96.230"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:8.19.1.11": {
+    "timestamp": "2026-06-22T14:24:22.135381",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 0,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=8.19.1.11"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "domain:accent.com": {
+    "timestamp": "2026-06-22T14:24:26.799264",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=accent.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=accent.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1997-05-20 04:00:00",
+          "age_days": 10625,
+          "registrar": "NAMECHEAP INC",
+          "expires": "2031-05-21 04:00:00",
+          "nameservers": [
+            "ns1.digimedia.com",
+            "ns2.digimedia.com",
+            "ns3.digimedia.com"
+          ],
+          "remaining_requests": "846"
+        }
+      }
+    }
+  },
+  "domain:ankit.gp.kumar": {
+    "timestamp": "2026-06-22T14:24:30.861762",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ankit.gp.kumar"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ankit.gp.kumar"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "845"
+        }
+      }
+    }
+  },
+  "domain:ch8p114mb3154.namp114.prod.outlook.com": {
+    "timestamp": "2026-06-22T14:24:34.863547",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ch8p114mb3154.namp114.prod.outlook.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ch8p114mb3154.namp114.prod.outlook.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-08-18 04:00:00",
+          "age_days": 11631,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2026-08-17 04:00:00",
+          "nameservers": [
+            "ns1-05.azure-dns.com",
+            "ns2-05.azure-dns.net",
+            "ns3-05.azure-dns.org",
+            "ns4-05.azure-dns.info"
+          ],
+          "remaining_requests": "844"
+        }
+      }
+    }
+  },
+  "domain:ds2pepf00003448.mail.protection.outlook.com": {
+    "timestamp": "2026-06-22T14:24:39.597845",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ds2pepf00003448.mail.protection.outlook.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ds2pepf00003448.mail.protection.outlook.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-08-18 04:00:00",
+          "age_days": 11631,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2026-08-17 04:00:00",
+          "nameservers": [
+            "ns1-05.azure-dns.com",
+            "ns2-05.azure-dns.net",
+            "ns3-05.azure-dns.org",
+            "ns4-05.azure-dns.info"
+          ],
+          "remaining_requests": "843"
+        }
+      }
+    }
+  },
+  "domain:ds2pepf00003448.namprd04.prod.outlook.com": {
+    "timestamp": "2026-06-22T14:24:44.381256",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ds2pepf00003448.namprd04.prod.outlook.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ds2pepf00003448.namprd04.prod.outlook.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-08-18 04:00:00",
+          "age_days": 11631,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2026-08-17 04:00:00",
+          "nameservers": [
+            "ns1-05.azure-dns.com",
+            "ns2-05.azure-dns.net",
+            "ns3-05.azure-dns.org",
+            "ns4-05.azure-dns.info"
+          ],
+          "remaining_requests": "842"
+        }
+      }
+    }
+  },
+  "domain:ds2pepf0000455b.namprd21.prod.outlook.com": {
+    "timestamp": "2026-06-22T14:24:49.167475",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ds2pepf0000455b.namprd21.prod.outlook.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ds2pepf0000455b.namprd21.prod.outlook.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-08-18 04:00:00",
+          "age_days": 11631,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2026-08-17 04:00:00",
+          "nameservers": [
+            "ns1-05.azure-dns.com",
+            "ns2-05.azure-dns.net",
+            "ns3-05.azure-dns.org",
+            "ns4-05.azure-dns.info"
+          ],
+          "remaining_requests": "841"
+        }
+      }
+    }
+  },
+  "domain:ds2pepf0000455b.outlook.office365.com": {
+    "timestamp": "2026-06-22T14:24:53.637931",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ds2pepf0000455b.outlook.office365.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ds2pepf0000455b.outlook.office365.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2005-06-20 18:10:48",
+          "age_days": 7671,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2027-06-20 18:10:48",
+          "nameservers": [
+            "ns1-07.azure-dns.com",
+            "ns2-07.azure-dns.net",
+            "ns3-07.azure-dns.org",
+            "ns4-07.azure-dns.info"
+          ],
+          "remaining_requests": "840"
+        }
+      }
+    }
+  },
+  "domain:ip-171-19-141-195.ec2.internal": {
+    "timestamp": "2026-06-22T14:24:57.644526",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ip-171-19-141-195.ec2.internal"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ip-171-19-141-195.ec2.internal"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "839"
+        }
+      }
+    }
+  },
+  "domain:ip-172-19-145-241.ec2.internal.mail": {
+    "timestamp": "2026-06-22T14:25:01.832545",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ip-172-19-145-241.ec2.internal.mail"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ip-172-19-145-241.ec2.internal.mail"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "838"
+        }
+      }
+    }
+  },
+  "domain:itpatches.com": {
+    "timestamp": "2026-06-22T14:25:06.570051",
+    "data": {
+      "vt_malicious": 8,
+      "vt_status": "8 hits",
+      "final_score": 3,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 8"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=itpatches.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=itpatches.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2015-07-17 15:01:23",
+          "age_days": 3992,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2027-07-17 15:01:23",
+          "nameservers": [
+            "ns-1533.awsdns-63.org",
+            "ns-1956.awsdns-52.co.uk",
+            "ns-197.awsdns-24.com",
+            "ns-779.awsdns-33.net"
+          ],
+          "remaining_requests": "837"
+        }
+      }
+    }
+  },
+  "domain:m0145750.ppops.net": {
+    "timestamp": "2026-06-22T14:25:12.079412",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=m0145750.ppops.net"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=m0145750.ppops.net"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2009-06-09 15:40:38",
+          "age_days": 6221,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2028-06-09 15:40:38",
+          "nameservers": [
+            "ns1.proofpoint.com",
+            "ns3.proofpoint.com",
+            "pdns99.ultradns.biz",
+            "pdns99.ultradns.com",
+            "pdns99.ultradns.net",
+            "pdns99.ultradns.org"
+          ],
+          "remaining_requests": "836"
+        }
+      }
+    }
+  },
+  "domain:mail.nova.phishme.com": {
+    "timestamp": "2026-06-22T14:25:16.261003",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mail.nova.phishme.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mail.nova.phishme.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2007-02-27 22:36:01",
+          "age_days": 7054,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2028-02-27 22:36:01",
+          "nameservers": [
+            "ns-1054.awsdns-03.org",
+            "ns-1559.awsdns-02.co.uk",
+            "ns-1896.awsdns-45.co.uk",
+            "ns-417.awsdns-52.com"
+          ],
+          "remaining_requests": "835"
+        }
+      }
+    }
+  },
+  "domain:mx0b-001dcc01.pphosted.com": {
+    "timestamp": "2026-06-22T14:25:20.865394",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mx0b-001dcc01.pphosted.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mx0b-001dcc01.pphosted.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2007-07-11 01:17:52",
+          "age_days": 6921,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2028-07-11 01:17:52",
+          "nameservers": [
+            "ns1.proofpoint.com",
+            "ns3.proofpoint.com",
+            "pdns99.ultradns.biz",
+            "pdns99.ultradns.com",
+            "pdns99.ultradns.net",
+            "pdns99.ultradns.org"
+          ],
+          "remaining_requests": "834"
+        }
+      }
+    }
+  },
+  "domain:ph0p114mb3260.namp114.prod.outlook.com": {
+    "timestamp": "2026-06-22T14:25:25.213955",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ph0p114mb3260.namp114.prod.outlook.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ph0p114mb3260.namp114.prod.outlook.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-08-18 04:00:00",
+          "age_days": 11631,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2026-08-17 04:00:00",
+          "nameservers": [
+            "ns1-05.azure-dns.com",
+            "ns2-05.azure-dns.net",
+            "ns3-05.azure-dns.org",
+            "ns4-05.azure-dns.info"
+          ],
+          "remaining_requests": "833"
+        }
+      }
+    }
+  },
+  "domain:phishme.com": {
+    "timestamp": "2026-06-22T14:25:29.894863",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=phishme.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=phishme.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2007-02-27 22:36:01",
+          "age_days": 7054,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2028-02-27 22:36:01",
+          "nameservers": [
+            "ns-1054.awsdns-03.org",
+            "ns-1559.awsdns-02.co.uk",
+            "ns-1896.awsdns-45.co.uk",
+            "ns-417.awsdns-52.com"
+          ],
+          "remaining_requests": "832"
+        }
+      }
+    }
+  },
+  "domain:postfix-smtp.mc-nova.phishme.com": {
+    "timestamp": "2026-06-22T14:25:34.175530",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=postfix-smtp.mc-nova.phishme.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=postfix-smtp.mc-nova.phishme.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2007-02-27 22:36:01",
+          "age_days": 7054,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2028-02-27 22:36:01",
+          "nameservers": [
+            "ns-1054.awsdns-03.org",
+            "ns-1559.awsdns-02.co.uk",
+            "ns-1896.awsdns-45.co.uk",
+            "ns-417.awsdns-52.com"
+          ],
+          "remaining_requests": "831"
+        }
+      }
+    }
+  },
+  "domain:ppops.net": {
+    "timestamp": "2026-06-22T14:25:38.641847",
+    "data": {
+      "vt_malicious": 1,
+      "vt_status": "1 hits",
+      "final_score": 3,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 1"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=ppops.net"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=ppops.net"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "2009-06-09 15:40:38",
+          "age_days": 6221,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2028-06-09 15:40:38",
+          "nameservers": [
+            "ns1.proofpoint.com",
+            "ns3.proofpoint.com",
+            "pdns99.ultradns.biz",
+            "pdns99.ultradns.com",
+            "pdns99.ultradns.net",
+            "pdns99.ultradns.org"
+          ],
+          "remaining_requests": "830"
+        }
+      }
+    }
+  },
+  "domain:pps.filterd": {
+    "timestamp": "2026-06-22T14:25:42.812233",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=pps.filterd"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=pps.filterd"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "829"
+        }
+      }
+    }
+  },
+  "domain:protection.outlook.com": {
+    "timestamp": "2026-06-22T14:25:47.582859",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=protection.outlook.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=protection.outlook.com"
+        },
+        "whois": {
+          "status": "ok",
+          "created": "1994-08-18 04:00:00",
+          "age_days": 11631,
+          "registrar": "Markmonitor Inc.",
+          "expires": "2026-08-17 04:00:00",
+          "nameservers": [
+            "ns1-05.azure-dns.com",
+            "ns2-05.azure-dns.net",
+            "ns3-05.azure-dns.org",
+            "ns4-05.azure-dns.info"
+          ],
+          "remaining_requests": "828"
+        }
+      }
+    }
+  },
+  "domain:return--path.com": {
+    "timestamp": "2026-06-22T14:25:51.309042",
+    "data": {
+      "vt_malicious": 2,
+      "vt_status": "2 hits",
+      "final_score": 3,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 2"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=return--path.com"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=return--path.com"
+        },
+        "whois": {
+          "status": "failed_400",
+          "body": "{\"status\":\"fail\",\"message\":\"The domain name parameter is not a valid domain or ip.\"}"
+        }
+      }
+    }
+  },
+  "domain:soc.alert": {
+    "timestamp": "2026-06-22T14:25:55.447074",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=soc.alert"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=soc.alert"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "826"
+        }
+      }
+    }
+  },
+  "url:http://lockbit7z37ntefjdbjextn6tmdkry4j546ejnru5cejeguitiopvhad.onion/": {
+    "timestamp": "2026-06-22T14:34:26.714109",
+    "data": {
+      "vt_malicious": 8,
+      "vt_status": "8 hits",
+      "final_score": 3,
+      "category": "Malicious",
+      "reason": [
+        "VirusTotal detections: 8"
+      ],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_403"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//lockbit7z37ntefjdbjextn6tmdkry4j546ejnru5cejeguitiopvhad.onion/"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:192.0.2.123": {
+    "timestamp": "2026-06-22T15:36:26.962221",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 1,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=192.0.2.123"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "ip:198.51.100.23": {
+    "timestamp": "2026-06-22T15:36:31.019598",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "0 hits",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {
+          "source": "AbuseIPDB",
+          "abuse_score": 0,
+          "abuse_reports": 3,
+          "status": "ok"
+        },
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=198.51.100.23"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "domain:accounts-example.invalid": {
+    "timestamp": "2026-06-22T15:36:35.043228",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=accounts-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=accounts-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "825"
+        }
+      }
+    }
+  },
+  "domain:edge01.example.invalid": {
+    "timestamp": "2026-06-22T15:36:39.106756",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=edge01.example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=edge01.example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "824"
+        }
+      }
+    }
+  },
+  "domain:example.invalid": {
+    "timestamp": "2026-06-22T15:36:43.225068",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "823"
+        }
+      }
+    }
+  },
+  "domain:hidden-example.invalid": {
+    "timestamp": "2026-06-22T15:36:46.484251",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=hidden-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=hidden-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "822"
+        }
+      }
+    }
+  },
+  "domain:hidden-link.invalid": {
+    "timestamp": "2026-06-22T15:36:49.661258",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=hidden-link.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=hidden-link.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "821"
+        }
+      }
+    }
+  },
+  "domain:mail.example.invalid": {
+    "timestamp": "2026-06-22T15:36:53.558161",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mail.example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mail.example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "820"
+        }
+      }
+    }
+  },
+  "domain:mailer-example.invalid": {
+    "timestamp": "2026-06-22T15:36:56.639020",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mailer-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mailer-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "819"
+        }
+      }
+    }
+  },
+  "domain:mx.example.invalid": {
+    "timestamp": "2026-06-22T15:37:00.685925",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mx.example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mx.example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "818"
+        }
+      }
+    }
+  },
+  "domain:mx1-example.invalid": {
+    "timestamp": "2026-06-22T15:37:03.980624",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=mx1-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=mx1-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "817"
+        }
+      }
+    }
+  },
+  "domain:notice-example.invalid": {
+    "timestamp": "2026-06-22T15:37:07.142572",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=notice-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=notice-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "816"
+        }
+      }
+    }
+  },
+  "domain:portal-example.invalid": {
+    "timestamp": "2026-06-22T15:37:10.186148",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=portal-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=portal-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "815"
+        }
+      }
+    }
+  },
+  "domain:relay-example.invalid": {
+    "timestamp": "2026-06-22T15:37:13.925726",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=relay-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=relay-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "814"
+        }
+      }
+    }
+  },
+  "domain:reply-example.invalid": {
+    "timestamp": "2026-06-22T15:37:18.288331",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=reply-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=reply-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "813"
+        }
+      }
+    }
+  },
+  "domain:secure-update.invalid": {
+    "timestamp": "2026-06-22T15:37:21.164443",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 2,
+      "category": "Clean",
+      "reason": [
+        "Phishing keyword in domain"
+      ],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=secure-update.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=secure-update.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "812"
+        }
+      }
+    }
+  },
+  "domain:status-example.invalid": {
+    "timestamp": "2026-06-22T15:37:24.055282",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=status-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=status-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "811"
+        }
+      }
+    }
+  },
+  "domain:tracking.reply-example.invalid": {
+    "timestamp": "2026-06-22T15:37:27.186723",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=tracking.reply-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=tracking.reply-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "810"
+        }
+      }
+    }
+  },
+  "domain:update.portal-example.invalid": {
+    "timestamp": "2026-06-22T15:37:30.331040",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=update.portal-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=update.portal-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "809"
+        }
+      }
+    }
+  },
+  "domain:zero-size-example.invalid": {
+    "timestamp": "2026-06-22T15:37:33.502570",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (400)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {},
+        "abuseipdb": {},
+        "anyrun": {},
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=zero-size-example.invalid"
+        },
+        "rdap": {
+          "source": "RDAP",
+          "portal_lookup": "https://lookup.icann.org/en/lookup?name=zero-size-example.invalid"
+        },
+        "whois": {
+          "status": "ok",
+          "created": null,
+          "age_days": null,
+          "registrar": null,
+          "expires": null,
+          "nameservers": [],
+          "remaining_requests": "808"
+        }
+      }
+    }
+  },
+  "url:http://hidden-link.invalid/collect": {
+    "timestamp": "2026-06-22T15:37:38.846411",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//hidden-link.invalid/collect"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://portal.example.invalid": {
+    "timestamp": "2026-06-22T15:37:43.917450",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//portal.example.invalid"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://status-example.invalid/check": {
+    "timestamp": "2026-06-22T15:37:50.417530",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//status-example.invalid/check"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:http://tracking.reply-example.invalid/pixel.png": {
+    "timestamp": "2026-06-22T15:37:55.955210",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=http%3A//tracking.reply-example.invalid/pixel.png"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:https://accounts-example.invalid/overview": {
+    "timestamp": "2026-06-22T15:38:00.282934",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=https%3A//accounts-example.invalid/overview"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  },
+  "url:https://secure-update.invalid/login?caseC123": {
+    "timestamp": "2026-06-22T15:38:04.478221",
+    "data": {
+      "vt_malicious": 0,
+      "vt_status": "VT Lookup Failed (404)",
+      "final_score": 0,
+      "category": "Clean",
+      "reason": [],
+      "provider_context": {
+        "urlscan": {
+          "source": "urlscan",
+          "status": "failed_400"
+        },
+        "abuseipdb": {},
+        "anyrun": {
+          "source": "ANY.RUN",
+          "status": "failed_403"
+        },
+        "talos": {
+          "source": "Talos",
+          "portal_lookup": "https://talosintelligence.com/reputation_center/lookup?search=https%3A//secure-update.invalid/login%3FcaseC123"
+        },
+        "rdap": {},
+        "whois": {}
+      }
+    }
+  }
+}

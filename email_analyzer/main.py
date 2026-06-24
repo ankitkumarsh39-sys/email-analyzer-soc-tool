@@ -20,6 +20,7 @@ import argparse
 import logging
 import warnings
 import shutil
+import pandas as pd
 from datetime import datetime
 
 
@@ -44,7 +45,6 @@ BANNER_PREFIXES = (
     "==== Email Analyzer finished ====",
 )
 
-
 class ConsoleOnlyFilter(logging.Filter):
     """
     Ensures ONLY important SOC messages appear on console.
@@ -66,7 +66,6 @@ class ConsoleOnlyFilter(logging.Filter):
             return True
 
         return False
-
 
 class SimpleConsoleFormatter(logging.Formatter):
     """
@@ -137,15 +136,12 @@ def setup_logging(project_root: str, reports_dir: str) -> str:
         )
 
     warnings.showwarning = showwarning
-
+    
     # Boot messages (exact format required)
     boot = logging.getLogger("BOOT")
     boot.info("==== Email Analyzer started ====")
     boot.info("BOOT - Report log: %s", report_log)
     boot.info("BOOT - Global log: %s", global_log)
-
-    return report_log
-
 
 # ----------------------------
 # Input Resolver
@@ -257,30 +253,50 @@ def main():
 
         logger.info("Parsing email from file '%s'", working_file)
 
-        # Run analysis on copied file
+        # Run analysis on copied 
+        
         email_data = analyze_email(working_file)
+
+        # ✅ SAFETY CHECK (CRITICAL FIX)
+        if not email_data:
+            logger.error("Email parsing failed → likely malformed .eml or empty content")
+
+            print("❌ Invalid or malformed .eml file detected.")
+            print("👉 Analysis skipped. No report generated.")
+
+            logging.getLogger("BOOT").info("==== Email Analyzer finished ====")
+            return
 
         logger.info("========== Analyze request completed successfully ==========")
 
     except Exception:
         logger.exception("Analysis failed")
-        logging.getLogger("BOOT").info("==== Email Analyzer finished ====")
+        logging.getLogger("BOOT").info("==== Email Analyzer finished ====\n")
         return
+    
 
     reporter = MailReporter(output_dir=args.reports)
 
     logger.info("Generating reports...........")
 
     try:
+        # ✅ JSON
         json_path = reporter.generate_json_report(email_data)
         logger.debug("JSON report path: %s", json_path)
         logger.info("JSON report generated:")
 
+        # ✅ TXT
         txt_path = reporter.generate_text_report(email_data)
         logger.debug("Text report path: %s", txt_path)
         logger.info("Text report generated:")
 
-        blocklist_path = reporter.generate_blocklist(email_data)
+        # ✅ BLOCKLIST (EXCEL DB)
+        # ✅ Update config DB
+        reporter.update_config_blocklist_excel(email_data)
+
+        # ✅ Generate blocklist report file
+        blocklist_path = reporter.generate_blocklist_report(email_data)
+
         logger.debug("Blocklist path: %s", blocklist_path)
         logger.info("Blocklist generated:")
         logger.info("Blocklist created:")

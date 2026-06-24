@@ -19,7 +19,6 @@ from .main import setup_logging
 from .analyzer import analyze_email
 from .mail_reporter import MailReporter
 
-
 # ----------------------------
 # Wait until file is stable
 # ----------------------------
@@ -49,7 +48,6 @@ def wait_until_file_stable(path: str, timeout: int = 30) -> bool:
 
     return False
 
-
 # ----------------------------
 # Process Single Email
 # ----------------------------
@@ -62,17 +60,7 @@ def process_one_eml(eml_path: str, project_root: str, reports_dir: str,
     - DO NOT move original file (SOC requirement)
     """
 
-    # ✅ Use centralized logging (FIXED)
-    setup_logging(project_root, reports_dir)
-
     logger = logging.getLogger(__name__)
-
-    # ----------------------------
-    # Console Pattern Start
-    # ----------------------------
-    logger.info("==== Email Analyzer started ====")
-    logger.info("BOOT - Report log: %s", os.path.join(reports_dir, "email_analysis.log"))
-    logger.info("BOOT - Global log: %s", os.path.join(project_root, "logging", "email.log"))
 
     # ----------------------------
     # Analyze Email
@@ -80,9 +68,8 @@ def process_one_eml(eml_path: str, project_root: str, reports_dir: str,
     email_data = analyze_email(eml_path)
 
     if not email_data:
-        logger.warning("Analyzer returned no data for file: %s", eml_path)
-        logger.info("==== Email Analyzer finished ====")
-        return
+        logger.error("Analysis failed - malformed or empty email: %s", eml_path)
+    return
 
     # ----------------------------
     # Generate Reports
@@ -149,7 +136,7 @@ def run_cycle(mode: str,
     - newest
     - range
     """
-
+    
     eml_files = [f for f in os.listdir(inbox_dir) if f.lower().endswith(".eml")]
     if not eml_files:
         return 0
@@ -183,12 +170,25 @@ def run_cycle(mode: str,
         if not wait_until_file_stable(full_path):
             logging.getLogger(__name__).warning("File not stable yet: %s", full_path)
             continue
+        
+        # ✅ ADD HASH CALCULATION HERE
+            try:
+                with open(full_path, "rb") as f:
+                    file_hash = hashlib.sha256(f.read()).hexdigest()
+            except Exception:
+                logging.getLogger(__name__).error("Failed to hash file: %s", full_path)
+                continue
 
-        process_one_eml(full_path, project_root, reports_dir, processed_dir, failed_dir)
-        count += 1
+            # ✅ DUPLICATE CHECK
+            if file_hash in seen_hashes:
+                logging.getLogger(__name__).info("Duplicate email skipped: %s", fn)
+                continue
+
+            seen_hashes.add(file_hash)
+
+            process_one_eml(full_path, project_root, reports_dir, processed_dir, failed_dir)
 
     return count
-
 
 # ----------------------------
 # Watcher Loop
@@ -210,10 +210,8 @@ def watch_folder():
     setup_logging(project_root, reports_dir)
 
     logger = logging.getLogger("WATCHER")
-    logger.info("Watcher running. Inbox: %s", inbox_dir)
 
-    seen = set()
-
+    seen_file = set()
     while True:
         try:
             emls = [f for f in os.listdir(inbox_dir) if f.lower().endswith(".eml")]
@@ -221,7 +219,8 @@ def watch_folder():
             for f in emls:
                 full_path = os.path.join(inbox_dir, f)
 
-                if full_path in seen:
+                #DUPLICATE CHECK
+                if full_path in seen_file:
                     continue
 
                 if not wait_until_file_stable(full_path):
@@ -229,16 +228,21 @@ def watch_folder():
                     continue
 
                 process_one_eml(full_path, project_root, reports_dir, None, None)
-                seen.add(full_path)
 
-        except Exception:
-            logger.critical("Watcher loop error", exc_info=True)
+                #ADD AFTER PROCESSING
+                seen_file.add(full_path)
 
-        time.sleep(5)
+        except KeyboardInterrupt:
+            logger.info("Watcher stopped safely")
+            break
 
+        time.sleep(2)
 
 # ----------------------------
 # Entry Point
 # ----------------------------
 if __name__ == "__main__":
-    watch_folder()
+    try:
+        watch_folder()
+    except KeyboardInterrupt:
+        logging.getLogger("WATCHER").info("Watcher stopped by user")
