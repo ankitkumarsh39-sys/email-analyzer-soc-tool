@@ -28,6 +28,8 @@ import gzip
 import hashlib
 import logging
 import zlib
+import mailparser
+
 from typing import Optional, Dict, Any, List, Set
 
 # For URL parsing and query extraction
@@ -37,7 +39,6 @@ from urllib.parse import (
     unquote
 )
 
-import mailparser
 from bs4 import BeautifulSoup
 
 from collections import Counter
