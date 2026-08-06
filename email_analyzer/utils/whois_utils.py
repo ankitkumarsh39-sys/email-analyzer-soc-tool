@@ -12,11 +12,19 @@ def is_ip(value: str) -> bool:
     except ValueError:
         return False
 
+
 def whois_lookup(domain: str, force_refresh: bool = False) -> dict:
     """
-    WHOISJSON lookup for domain intelligence
-    """
+    WHOISJSON lookup for domain intelligence.
 
+    Returns a normalized dict used by provider_context["whois"].
+    Adds:
+    - ips
+    - isNewlyRegistered
+    - registered
+    - source
+    while preserving existing fields.
+    """
     try:
         domain = (domain or "").strip().lower().rstrip(".")
 
@@ -29,8 +37,9 @@ def whois_lookup(domain: str, force_refresh: bool = False) -> dict:
                 "reason": "ip_address"
             }
 
-        cache_key = (domain, force_refresh)
-        if cache_key in WHOIS_CACHE:
+        # Use domain-only cache key; force_refresh bypasses cache instead of creating a second cached copy
+        cache_key = domain
+        if not force_refresh and cache_key in WHOIS_CACHE:
             return WHOIS_CACHE[cache_key]
 
         api_key = os.getenv("WHOISJSON_API_KEY")
@@ -65,20 +74,34 @@ def whois_lookup(domain: str, force_refresh: bool = False) -> dict:
                 "raw": payload
             }
 
+        registered = payload.get("registered")
+        source = payload.get("source")
+
         registrar_obj = payload.get("registrar") or {}
         if not isinstance(registrar_obj, dict):
             registrar_obj = {}
 
+        registrar = registrar_obj.get("name")
+
         created = payload.get("created")
         expires = payload.get("expires")
+
         nameservers = payload.get("nameserver") or []
         if not isinstance(nameservers, list):
             nameservers = [nameservers]
 
-        registrar = registrar_obj.get("name")
+        ips = payload.get("ips")
 
-        age_days = None
-        if created:
+        age_obj = payload.get("age") or {}
+        if not isinstance(age_obj, dict):
+            age_obj = {}
+
+        # Prefer provider-calculated age if available
+        age_days = age_obj.get("days")
+        is_newly_registered = age_obj.get("isNewlyRegistered")
+
+        # Fallback: compute age_days from created if provider didn't return it
+        if age_days is None and created:
             try:
                 created_dt = dt.datetime.fromisoformat(created.replace("Z", "+00:00"))
                 if created_dt.tzinfo is None:
@@ -89,7 +112,6 @@ def whois_lookup(domain: str, force_refresh: bool = False) -> dict:
 
                 if age_days < 0:
                     age_days = None
-
             except Exception as parse_err:
                 return {
                     "status": "error",
@@ -99,12 +121,23 @@ def whois_lookup(domain: str, force_refresh: bool = False) -> dict:
 
         result = {
             "status": "ok",
+            "registered": registered,
+            "source": source,
+
             "created": created,
             "age_days": age_days,
+            "isNewlyRegistered": is_newly_registered,
+
             "registrar": registrar,
             "expires": expires,
             "nameservers": nameservers,
-            "remaining_requests": r.headers.get("Remaining-Requests")
+            "ips": ips,
+
+            "remaining_requests": (
+                r.headers.get("Remaining-Requests")
+                or r.headers.get("remaining-requests")
+                or ""
+            )
         }
 
         WHOIS_CACHE[cache_key] = result
@@ -115,4 +148,3 @@ def whois_lookup(domain: str, force_refresh: bool = False) -> dict:
             "status": "error",
             "error": str(e)
         }
-    

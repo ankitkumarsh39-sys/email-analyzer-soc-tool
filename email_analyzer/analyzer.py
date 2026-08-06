@@ -1,5 +1,5 @@
 """
-analyzer.py (FINAL + VT IOC SCORING)
+# analyzer.py
 
 Purpose:
 - Parse .eml file OR newest .eml from a folder
@@ -24,10 +24,18 @@ from __future__ import annotations
 import os
 import re
 import base64
+import gzip
 import hashlib
 import logging
+import zlib
 from typing import Optional, Dict, Any, List, Set
-from urllib.parse import urlparse
+
+# For URL parsing and query extraction
+from urllib.parse import (
+    urlparse,
+    parse_qs,
+    unquote
+)
 
 import mailparser
 from bs4 import BeautifulSoup
@@ -35,8 +43,16 @@ from bs4 import BeautifulSoup
 from collections import Counter
 from email.header import decode_header
 
+
+
 # Advanced IOC scoring engine (with VT / whitelist / blocklist)
-from ioc_lib.ioc_analyzer import IOCAnalyzer, AnalysisCancelled
+from ioc_lib.ioc_analyzer import (
+    IOCAnalyzer,
+    AnalysisCancelled,
+    anyrun_file_lookup,
+    anyrun_get_analysis,
+    talos_lookup_reference,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,19 +107,338 @@ def safe_str(value: Any, limit: int = 200) -> str:
 
 def normalize_url(url: str) -> str:
     """
-    Trim trailing punctuation often seen in plain-text emails.
-    Example:
-      https://example.com/login).  -> https://example.com/login
+    Purpose: Normalize and clean a URL string for IOC extraction.
+    Input: url (str) - raw URL candidate potentially including trailing punctuation
+    Output: cleaned url (str) suitable for parsing/IOC matching
     """
     if not url:
         return url
-    return url.strip().strip(').,;\"\'')  # safe cleanup
+    # Basic trimming of whitespace and common trailing punctuation
+    return url.strip().strip(').,;"\'')
+
+# =========================================================================
+# URL WRAPPER DETECTION
+#
+# Why:
+# Many email security products rewrite URLs.
+#
+# Example:
+#
+# Original:
+#   https://evil.com/login
+#
+# Delivered Email:
+#   https://safelinks.protection.outlook.com/?url=https://evil.com/login
+#
+# We attempt to recover the real URL before IOC scanning.
+# =========================================================================
+
+KNOWN_WRAPPERS = {
+    "safelinks.protection.outlook.com": "Microsoft Safe Links",
+    "urldefense.proofpoint.com": "Proofpoint",
+    "protect-us.mimecast.com": "Mimecast",
+    "linkprotect.cudasvc.com": "Barracuda",
+    "webdefence.global.blackspider.com": "MailControl",
+    "mailcontrol.com": "MailControl",
+}
+
+WRAPPER_PARAMS = [
+    "url",
+    "u",
+    "q",
+    "target",
+    "redirect",
+    "destination",
+    "dest",
+    "link",
+    "next",
+    "return",
+    "to",
+]
+
+
+def _decode_wrapper_value(value: Any) -> Optional[str]:
+    """Decode a wrapper payload recursively, including URL-encoding and base64/gzip variants."""
+    if value is None:
+        return None
+
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            decoded = _decode_wrapper_value(item)
+            if decoded:
+                return decoded
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    candidate = text
+    for _ in range(5):
+        next_candidate = unquote(candidate)
+        if next_candidate == candidate:
+            break
+        candidate = next_candidate
+
+    candidate = candidate.strip().strip('"\'<>')
+    if candidate.startswith(("http://", "https://")):
+        return candidate
+
+    try:
+        decoded_bytes = base64.b64decode(candidate.encode("utf-8"), altchars=b"-_", validate=False)
+    except Exception:
+        decoded_bytes = None
+
+    if decoded_bytes:
+        decoded_text = decoded_bytes.decode("utf-8", errors="ignore").strip().strip('"\'<>')
+        if decoded_text.startswith(("http://", "https://")):
+            return decoded_text
+
+        url_match = URL_REGEX.search(decoded_text)
+        if url_match:
+            return url_match.group(0)
+
+        nested = _decode_wrapper_value(decoded_text)
+        if nested:
+            return nested
+
+        # Some wrapper services encode a zlib-compressed payload with a small
+        # prefix byte before the actual compressed stream.
+        for prefix_len in range(1, min(4, len(decoded_bytes))):
+            try:
+                decompressed = zlib.decompress(decoded_bytes[prefix_len:])
+            except Exception:
+                decompressed = None
+
+            if decompressed:
+                decompressed_text = decompressed.decode("utf-8", errors="ignore").strip().strip('"\'<>').rstrip('\x00')
+                if decompressed_text.startswith(("http://", "https://")):
+                    return decompressed_text
+
+                url_match = URL_REGEX.search(decompressed_text)
+                if url_match:
+                    return url_match.group(0)
+
+                nested = _decode_wrapper_value(decompressed_text)
+                if nested:
+                    return nested
+                break
+
+        try:
+            decompressed = gzip.decompress(decoded_bytes)
+        except Exception:
+            decompressed = None
+
+        if decompressed:
+            decompressed_text = decompressed.decode("utf-8", errors="ignore").strip().strip('"\'<>')
+            if decompressed_text.startswith(("http://", "https://")):
+                return decompressed_text
+
+            url_match = URL_REGEX.search(decompressed_text)
+            if url_match:
+                return url_match.group(0)
+
+            nested = _decode_wrapper_value(decompressed_text)
+            if nested:
+                return nested
+
+    return None
+
+
+def detect_wrapped_url(url: str) -> Dict[str, Any]:
+    """
+    Purpose: Detect whether the provided URL appears to be rewritten by a known
+             email security wrapper service.
+    Input: url (str)
+    Output: dict with keys: wrapped (bool), provider (str|None), wrapper_domain (str|None)
+    """
+
+    try:
+        parsed = urlparse(url)
+        host = (parsed.netloc or "").lower()
+
+        # Match known exact mappings first
+        for wrapper_domain, provider in KNOWN_WRAPPERS.items():
+            if wrapper_domain in host:
+                return {"wrapped": True, "provider": provider, "wrapper_domain": host}
+
+        # Heuristic tokens
+        heuristic_tokens = ("safelink", "proofpoint", "mimecast", "mailcontrol", "urldefense", "cudasvc", "protect", "linkprotect", "wrap")
+        if any(token in host for token in heuristic_tokens):
+            return {"wrapped": True, "provider": host or "Unknown Wrapper", "wrapper_domain": host}
+
+        # If query contains common wrapper params, consider it wrapped
+        params = parse_qs(parsed.query, keep_blank_values=True)
+        if any(param in params for param in WRAPPER_PARAMS):
+            return {"wrapped": True, "provider": host or "Unknown Wrapper", "wrapper_domain": host}
+
+    except Exception:
+        logger.debug("detect_wrapped_url failed for %s", url, exc_info=True)
+
+    return {"wrapped": False, "provider": None, "wrapper_domain": None}
+
+
+"""
+    Recover original URL from wrapper parameters.
+
+    Example:
+        https://safelinks...?url=https://evil.com
+
+    Returns:
+        https://evil.com
+"""
+
+def extract_embedded_url(url: str) -> Optional[str]:
+    """
+    Purpose: Recover original destination URL from known wrapper encodings.
+    Input: url (str) - possibly rewritten by a wrapper
+    Output: decoded destination URL (str) or None
+    """
+    try:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query, keep_blank_values=True)
+
+        # 1) Query-parameter based wrappers (e.g. ?url=..., ?u=...)
+        for parameter in WRAPPER_PARAMS:
+            if parameter not in params:
+                continue
+            for value in params[parameter]:
+                decoded = _decode_wrapper_value(value)
+                if decoded:
+                    return decoded
+
+        # 2) Path-style wrappers: Mimecast often uses /s/<dest>, Barracuda/others may use /l/ or /web/redirect
+        path = (parsed.path or "").lstrip("/")
+        path_candidates = []
+        if path.startswith("s/"):
+            path_candidates.append(path[2:])
+        if path.startswith("l/"):
+            path_candidates.append(path[2:])
+        # capture patterns like /web/Redirect?u=<url>
+        if "/web/Redirect" in path or "/web/rewrite" in path:
+            # fallback to checking query params for known keys
+            for parameter in WRAPPER_PARAMS:
+                if parameter in params:
+                    for value in params[parameter]:
+                        decoded = _decode_wrapper_value(value)
+                        if decoded:
+                            return decoded
+
+        for candidate in path_candidates:
+            candidate = candidate.strip().strip('"\'<>')
+            # If candidate itself contains an encoded URL (e.g. percent-encoded), unquote and test
+            candidate_unq = unquote(candidate)
+            if candidate_unq.startswith(("http://", "https://")):
+                return candidate_unq
+
+        # 3) Sometimes the full destination is present in entire query string
+        entire_q = parsed.query or ""
+        decoded_entire = _decode_wrapper_value(entire_q)
+        if decoded_entire and decoded_entire.startswith(("http://", "https://")):
+            return decoded_entire
+
+    except Exception:
+        logger.debug("extract_embedded_url failed for %s", url, exc_info=True)
+
+    return None
+
+
+def unwrap_url(url: str) -> Dict[str, Any]:
+    """
+    Purpose: Produce a standardized wrapper investigation result for one URL.
+    Input: url (str)
+    Output: dict with keys: wrapped, provider, wrapped_url, decoded_url, decode_success, wrapper_domain, final_ioc_url
+    Rules: final_ioc_url = decoded_url if present, else wrapped_url
+    """
+
+    wrapper_info = detect_wrapped_url(url)
+
+    decoded = extract_embedded_url(url) if wrapper_info.get("wrapped") else None
+
+    final_ioc = decoded if decoded else url
+
+    return {
+        "wrapped": bool(wrapper_info.get("wrapped")),
+        "provider": wrapper_info.get("provider"),
+        "wrapped_url": url,
+        "decoded_url": decoded,
+        "decode_success": bool(decoded),
+        "wrapper_domain": wrapper_info.get("wrapper_domain"),
+        "final_ioc_url": final_ioc,
+    }
+
+
+# -------------------------------------------------------------------------
+# Maintenance: Placeholder intelligence engine stubs
+# The project requires multiple passive/active intelligence modules.
+# These stubs provide stable return shapes so the UI/reporting code can
+# render consistent fields until proper integrations are implemented.
+# Add real provider lookups (whois, ssl, urlscan, passive DNS, MX lookups)
+# when integrating external services.
+# -------------------------------------------------------------------------
+def whois_lookup(domain: str) -> Dict[str, Any]:
+    """Return minimal WHOIS-like data for reporting; stub for integration."""
+    if not domain:
+        return {}
+    return {
+        "registrar": "",
+        "creation_date": None,
+        "updated_date": None,
+        "expiry_date": None,
+        "age_days": None,
+        "country": "",
+        "organization": "",
+        "dnssec": None,
+        "status": "",
+        "nameservers": [],
+        "ips": [],
+    }
+
+
+def ssl_intelligence(host: str) -> Dict[str, Any]:
+    """Stub for SSL certificate intelligence (issuer, valid_from, valid_to)."""
+    return {}
+
+
+def redirect_chain(url: str) -> Dict[str, Any]:
+    """Stub to return redirect chain information for a URL."""
+    return {}
+
+
+def brand_impersonation_check(url: str, text: str = "") -> Dict[str, Any]:
+    """Stub for brand impersonation heuristics (logos, domains, similarity)."""
+    return {}
+
+
+def qr_phishing_check(image_bytes: bytes) -> Dict[str, Any]:
+    """Stub for QR code detection & analysis."""
+    return {}
+
+
+def homograph_detection(domain: str) -> Dict[str, Any]:
+    """Stub for homograph (IDN) detection and similarity scoring."""
+    return {}
+
+
+def mx_intelligence(domain: str) -> Dict[str, Any]:
+    """Stub for MX-host analysis (mx hosts, ASNs, hosting provider)."""
+    return {}
+
+
+def infrastructure_reuse_check(value: str) -> Dict[str, Any]:
+    """Stub to detect reuse of hosting/infrastructure across IOCs."""
+    return {}
+
+
+def passive_dns_lookup(domain: str) -> Dict[str, Any]:
+    """Stub for passive DNS aggregation results."""
+    return {}
 
 #---------------------------------------------------------------------
-    """
+"""
     convert IOC into safe analyst-readable form.
     used ONLY for text reporting / human-readable output.
-    """
+"""
 
 #--------------------------------------------------------------------
 
@@ -183,19 +518,62 @@ def extract_urls_from_html(html: str) -> List[str]:
     urls: Set[str] = set()
     soup = BeautifulSoup(html, "html.parser")
 
-    # Extract href links
+    # Extract href links but only keep http(s) targets. Avoid javascript:, mailto:, anchors, or malformed hrefs.
     for a in soup.find_all("a", href=True):
-        urls.add(normalize_url(a["href"]))
+        href = a.get("href") or ""
+        if not href:
+            continue
+        candidate = normalize_url(href)
+        if candidate and candidate.lower().startswith(("http://", "https://")):
+            urls.add(candidate)
 
     # Extract img src links (useful for tracking pixels)
     for img in soup.find_all("img", src=True):
-        urls.add(normalize_url(img["src"]))
+        src = img.get("src") or ""
+        candidate = normalize_url(src)
+        if candidate and candidate.lower().startswith(("http://", "https://")):
+            urls.add(candidate)
 
     # Extract raw URLs from HTML content itself
     for u in URL_REGEX.findall(html):
-        urls.add(normalize_url(u))
+        candidate = normalize_url(u)
+        if candidate and candidate.lower().startswith(("http://", "https://")):
+            urls.add(candidate)
 
     return sorted(u for u in urls if u)
+
+#----------------------------------------------------------------
+def extract_urls_from_headers(headers: Dict[str, Any]) -> List:
+    """
+    Extract http/https URLs from email headers safely.
+    Why:
+    - mailparser exposes headers, but does not create a dedicated header URL List.
+    - This avoids feeding full raw header dict strings into IOC extraction, which caused false-positive domains like "header.from" and "smtp.mailfrom".
+    """
+
+    if not headers:
+        return []
+
+    urls: Set[str] = set()
+
+    for key, value in headers.items():
+        if value is None:
+            continue
+
+        # Convert list/tuple/dict/header values into searchable text safely.
+        if isinstance(value, (list, tuple, dict)):
+            text = str(value)
+        else:
+            text = str(value)
+
+        for u in URL_REGEX.findall(text):
+            clean_url = normalize_url(u)
+            if clean_url and clean_url.lower().startswith(("http://", "https://")):
+                urls.add(clean_url)
+
+    return sorted(urls)
+
+#------------------------------------------------------------------------------------
 
 def find_hidden_elements(html: str) -> int:
     """
@@ -374,7 +752,6 @@ def _header_mismatch_flags(headers: Dict[str, Any]) -> Dict[str, Any]:
     Keep only the most important headers for human-readable reporting.
     Full headers are still returned separately.
     """
-
 #---------------------------------------------------------------------
 
 def _extract_header_focus(headers: Dict[str, Any]) -> Dict[str, Any]:
@@ -638,11 +1015,122 @@ def summarize_osint(ioc_scoring: List[Dict[str, Any]]) -> Dict[str, Any]:
     summary["providers_seen"]= sorted(summary["providers_seen"])
     return summary
 
+
+def reanalyze_ioc_in_email_data(email_data: Dict[str, Any], normalized_value: str) -> Dict[str, Any]:
+    """
+    Reanalyze a single IOC entry from already-loaded email_data.
+    """
+    if not email_data or not normalized_value:
+        return email_data
+
+    ioc_rows = email_data.get("ioc_scoring", []) or []
+    selected_index = None
+    selected_item = None
+
+    for idx, item in enumerate(ioc_rows):
+        if item.get("normalized") == normalized_value:
+            selected_index = idx
+            selected_item = item
+            break
+
+    if selected_index is None or selected_item is None:
+        return email_data
+
+    try:
+        ioc_engine = IOCAnalyzer(
+            vt_api_key="",
+            whitelist_path=os.path.join(PROJECT_ROOT, "config", "whitelist.xlsx"),
+            blocklist_path=os.path.join(PROJECT_ROOT, "config", "blocklist.xlsx"),
+            logger=logger,
+        )
+
+        updated_record = ioc_engine.reanalyze_ioc(selected_item)
+        if hasattr(updated_record, "__dict__"):
+            updated_item = updated_record.__dict__
+        else:
+            updated_item = dict(updated_record)
+
+        email_data["ioc_scoring"][selected_index] = updated_item
+        email_data["osint_summary"] = summarize_osint(email_data["ioc_scoring"])
+
+        severity_data = calculate_email_severity_score({
+            **{"ioc_scoring": email_data.get("ioc_scoring", [])},
+            **{"body_stats": email_data.get("body_stats", {})},
+            **{"auth_results": email_data.get("auth_results", "")},
+            **{"header_analysis": email_data.get("header_analysis", {})},
+            **{"subject_analysis": email_data.get("subject_analysis", {})},
+        })
+
+        email_data["email_score"] = severity_data.get("email_score", 0)
+        email_data["email_severity"] = severity_data.get("email_severity", "Unknown")
+        email_data["email_score_reasons"] = severity_data.get("email_score_reason")
+
+    except Exception:
+        logger.error("Failed to reanalyze IOC: %s", normalized_value, exc_info=True)
+
+    return email_data
+
 # -----------------------------------------------------------------------------
 # Main Analysis Function
 # -----------------------------------------------------------------------------
+def build_targeted_header_ioc_text(
+    headers_raw: Dict[str, Any],
+    mismatch_flags: Dict[str, Any],
+    auth_results: Any,
+    received_hops: List[Dict[str, Any]],
+) -> str:
+    """
+    Build a clean IOC-only text block from header data.
 
-def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
+    Why this exists:
+    - avoid feeding raw Python dict/list string representations into IOC extraction
+    - keep real header-derived IOCs (domains, IPs, auth text)
+    - avoid false positives like:
+        header.from
+        smtp.mailfrom
+        soc.alert
+        ankit.gp.kumar
+    """
+    parts: List[str] = []
+
+    # Sender/auth mismatch domains
+    for key in ("from_domain", "reply_to_domain", "return_path_domain", "sender_domain"):
+        value = (mismatch_flags or {}).get(key)
+        if value:
+            parts.append(str(value))
+
+    # Authentication-Results text can still contain useful evidence
+    if auth_results:
+        parts.append(str(auth_results))
+
+    # Selected header values only (not all raw headers)
+    selected_headers = [
+        "From", "Reply-To", "Return-Path", "Sender",
+        "Received-SPF", "Authentication-Results", "X-Originating-IP"
+    ]
+
+    for header_name in selected_headers:
+        header_value = _get_header(headers_raw, header_name)
+        if header_value:
+            parts.append(str(header_value))
+
+    # Received hops - extract only raw hop strings if available
+    for hop in received_hops or []:
+        if isinstance(hop, dict):
+            raw = hop.get("raw")
+            if raw:
+                parts.append(str(raw))
+
+    return "\n".join(parts)
+
+
+#----------------------------------------------------------------------------------------
+
+# this function defines the main entry point for analyzing an email.
+# It takes an input path (which can be a direct .eml file or a folder containing .eml files) and an optional flag to force reanalysis of IOCs.
+#  The function returns a structured dictionary containing the analysis results or None if the analysis fails.
+
+def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Optional[Dict[str, Any]]:
     """
     Main entry for email analysis.
     Returns a structured dict or None on failure.
@@ -717,22 +1205,120 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
     text_html = "\n".join(mail.text_html) if getattr(mail, "text_html", None) else ""
 
     # -------------------------------------------------------------------------
-    # URLs
+    # Pre-collect attachment hashes BEFORE IOC analysis
+    #
+    # Why this is needed:
+    # - The IOC analyzer currently extracts/scorers hashes from text input
+    # - If attachment SHA256 stays only in attachments_info later,
+    #   it will not appear in email_data["ioc_scoring"]
     # -------------------------------------------------------------------------
+    attachments = getattr(mail, "attachments", None) or []
+    attachment_hashes: List[str] = []
+
+    for att in attachments:
+        try:
+            payload = decode_attachment_payload(att.get("payload"))
+            if not payload:
+                continue
+
+            h = sha256_bytes(payload)
+            if h:
+                attachment_hashes.append(h)
+
+        except Exception:
+            logger.error("Pre-attachment hash collection failed.", exc_info=True)
+
+# -------------------------------------------------------------------------
+# URL Extraction + Wrapper Recovery
+#
+# Collect URLs from:
+# - plain text
+# - HTML
+# - headers
+#
+# Then:
+# - detect wrapper services
+# - recover original destination URLs
+# - preserve investigation evidence
+# -------------------------------------------------------------------------
+
     urls: Set[str] = set()
-    urls.update(extract_urls_from_text(text_plain))
-    urls.update(extract_urls_from_html(text_html))
+    url_evidence: List[Dict[str, Any]] = []
+
+    # ----------------------------------------------------
+    # Plain Text URLs
+    # ----------------------------------------------------
+    for url in extract_urls_from_text(text_plain):
+
+        unwrap_data = unwrap_url(url)
+
+        final_url = (
+            unwrap_data["decoded_url"]
+            if unwrap_data["decode_success"]
+            else unwrap_data["wrapped_url"]
+        )
+
+        urls.add(final_url)
+
+        # Maintenance: include `final_ioc_url` so downstream reporters and
+        # IOC engines can clearly consume the decoded/final URL.
+        url_evidence.append({
+            **unwrap_data,
+            "source": "plain_text",
+            "final_ioc_url": final_url,
+        })
+
+    # ----------------------------------------------------
+    # HTML URLs
+    # ----------------------------------------------------
+    for url in extract_urls_from_html(text_html):
+
+        unwrap_data = unwrap_url(url)
+
+        final_url = (
+            unwrap_data["decoded_url"]
+            if unwrap_data["decode_success"]
+            else unwrap_data["wrapped_url"]
+        )
+
+        urls.add(final_url)
+
+        # Maintenance: include `final_ioc_url` for HTML-sourced URLs.
+        url_evidence.append({
+            **unwrap_data,
+            "source": "html",
+            "final_ioc_url": final_url,
+        })
+
+    # ----------------------------------------------------
+    # Header URLs
+    # ----------------------------------------------------
+    for url in extract_urls_from_headers(headers_raw):
+
+        unwrap_data = unwrap_url(url)
+
+        final_url = (
+            unwrap_data["decoded_url"]
+            if unwrap_data["decode_success"]
+            else unwrap_data["wrapped_url"]
+        )
+
+        urls.add(final_url)
+
+        # Maintenance: include `final_ioc_url` for header-sourced URLs.
+        url_evidence.append({
+            **unwrap_data,
+            "source": "header",
+            "final_ioc_url": final_url,
+        })
+
     urls_sorted = sorted(urls)
 
-    # Full URL details go to file logs only
-    logger.debug("URLs extracted: %d", len(urls_sorted))
-    for u in urls_sorted[:200]:
-        logger.debug("URL: %s", u)
-
     # -------------------------------------------------------------------------
-    # Hidden HTML
+    # Hidden HTML extraction section
     # -------------------------------------------------------------------------
     hidden_count = find_hidden_elements(text_html)
+
     if hidden_count > 0:
         logger.warning("Hidden HTML elements detected: %d", hidden_count)
 
@@ -757,10 +1343,25 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
     combined_text += "\n".join(urls_sorted) + "\n"
     
     #  ADD Header : Optional but HIGH VALUE: We could also consider adding header values to the combined text for IOC analysis, as sometimes IOCs can be found in headers (e.g. X-Originating-IP, User-Agent, etc.).
-    combined_text += str(headers_raw) + "\n"
+    combined_text += build_targeted_header_ioc_text(
+        headers_raw=headers_raw,
+        mismatch_flags=mismatch_flags,
+        auth_results=auth_results,
+        received_hops=received,
+    ) + "\n"
+
+    # Add attachment SHA256 values so they are scored as normal hash IOCs
+    
+    if attachment_hashes:
+        unique_attachment_hashes = sorted(set(attachment_hashes))
+        combined_text += "\n".join(unique_attachment_hashes) + "\n"
+
     osint_summary: Dict[str, Any] = {}
     defanged_ioc_text = ""
     scored = {}
+
+    # Initialize engine reference early so later attachment code can safely check it
+    ioc_engine: Optional[IOCAnalyzer] = None
 
     try:
         ioc_engine = IOCAnalyzer(
@@ -770,7 +1371,10 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
             logger=logger,
         )
 
-        scored = ioc_engine.analyze_text_iocs(combined_text)
+        scored = ioc_engine.analyze_text_iocs(
+            combined_text,
+            force_refresh=force_reanalyze_iocs,
+        )
 
         if not scored or "results" not in scored:
             raise Exception("Invalid IOC analyzer output")
@@ -828,7 +1432,6 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
     # -------------------------------------------------------------------------
 
     attachments_info: List[Dict[str, Any]] = []
-    attachments = getattr(mail, "attachments", None) or []
 
     for att in attachments:
         try:
@@ -849,16 +1452,27 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
             }
             vt_upload_result = None
 
-            if ioc_engine:
+            if ioc_engine is not None:
                 vt_malicious, vt_status = ioc_engine.vt.lookup("hash", h)
-
+ 
                 vt_hash_result = {
                     "vt_malicious": vt_malicious,
                     "vt_status": vt_status
                 }
-
+ 
                 if vt_malicious == 0:
                     vt_upload_result = ioc_engine.vt.submit_file_bytes(filename, payload)
+ 
+                anyrun_result = anyrun_file_lookup(filename, payload)
+                anyrun_report = {}
+                if anyrun_result.get("analysis_id"):
+                    anyrun_report = anyrun_get_analysis(anyrun_result["analysis_id"])
+ 
+                talos_result = talos_lookup_reference(h)
+            else:
+                anyrun_result = {}
+                anyrun_report = {}
+                talos_result = {}
 
             # ==============================
             # ✅ STORE RESULT
@@ -869,7 +1483,10 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
                 "size": len(payload),
                 "sha256": h,
                 "vt_hash": vt_hash_result,
-                "vt_upload": vt_upload_result
+                "vt_upload": vt_upload_result,
+                "anyrun": anyrun_result,
+                "anyrun_report": anyrun_report,
+                "talos": talos_result,
             })
 
         except Exception:
@@ -890,9 +1507,8 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
     **{"subject_analysis": subject_analysis},
     })
 
-
-    # Final output used by mail_reporter.py
-    return {
+# Final output used by mail_reporter.py
+    return{
         "input_path": input_path,
         "eml_used": eml_path,
         "subject": safe_str(decoded_subject, 300),
@@ -915,7 +1531,13 @@ def analyze_email(input_path: str) -> Optional[Dict[str, Any]]:
             "hidden_html_count": hidden_count,
         },
 
+        # URLs that went to IOC analysis
         "urls_extracted": urls_sorted,
+
+        # Investigation evidence
+        # Shows wrapper provider and recovered URLs
+        "urls_extracted_detail": url_evidence,
+
         "iocs": iocs,
         "attachments": attachments_info,
         "sender_domains": list(sender_domains),

@@ -2,16 +2,27 @@
 __pycache__/
 *.pyc
 
-# Logs
-logging/
-reports/*.log
+# Streamlit
+.streamlit/
 
-# Data (emails should not go to GitHub)
-data/
+# Virtual environment
+venv/
+env/
+
+# Reports (generated files)
+reports/
+
+# Uploaded emails
+data/processed/
 
 # OS files
 .DS_Store
-Thumbs.db
 
-# Virtual env
+# Logs
+*.log
+
+# Excel configs (optional if sensitive)
+config/*.xlsx
+
+# API
 .env
