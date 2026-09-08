@@ -11,7 +11,6 @@ What it does:
    - Domains (supports defanged)
    - URLs (supports hxxp/hxxps and [://])
    - Hashes (MD5/SHA1/SHA256 via iocextract)
-   - NOTE: CVE extraction is intentionally REMOVED (as per requirement)
 
 2) Normalize / Refang IOCs:
    - example[.]com -> example.com
@@ -971,6 +970,7 @@ class IOCAnalyzer:
     # -------------------------------------------------------------------------
     # Cancel support
     # -------------------------------------------------------------------------
+
     def reset_cancel_state(self) -> None:
         """Reset cancel flag before a new scoring run."""
         self.cancel_requested = False

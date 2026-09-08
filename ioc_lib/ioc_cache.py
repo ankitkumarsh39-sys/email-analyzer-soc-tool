@@ -1,5 +1,8 @@
 import json
 import os
+import logging
+logger = logging.getLogger(__name__)
+
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
@@ -33,14 +36,22 @@ def load_cache() -> Dict[str, Any]:
 # ------------------------------------------------------------
 # SAVE CACHE
 # ------------------------------------------------------------
-def save_cache(cache: Dict[str, Any]) -> None:
+def save_cache(cache):
     """
-    Save cache safely.
-    """
-    os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+    Save IOC cache safely.
 
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(cache, f, indent=2)
+    Prevent application crashes if Windows, OneDrive or another process temporarily locks the cache file.
+    """
+
+    try:
+        with open(CACHE_FILE, "w", encoding="utf=8") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    
+    except PermissionError:
+        logger.warning("IOC Cache file Locked. Skipping Cache Write.")
+    
+    except Exception: 
+        logger.exception("Failed to save IOC Cache")
 
 
 # ------------------------------------------------------------

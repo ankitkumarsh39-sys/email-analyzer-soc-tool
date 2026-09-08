@@ -29,6 +29,7 @@ import hashlib
 import logging
 import zlib
 import mailparser
+import html as html_lib
 
 from typing import Optional, Dict, Any, List, Set
 
@@ -104,43 +105,218 @@ def safe_str(value: Any, limit: int = 200) -> str:
     s = str(value)
     return s[:limit] + ("..." if len(s) > limit else "")
 
+#------------------------------------------------------------------------
+
+#==========================================================================
+# Function: clean_html_url
+
+# Purpose:
+# Somtimes URLS are extracted with full HTML tags.
+
+# Example:
+
+# INPUT : <a href="https://evil.com/login">Click Here</a>
+
+# Output: https://evil.com/login
+
+# WHY:
+# We only want the URL.
+
+# Many threat intelligence providers cannont process HTML tags.
+
+#===========================================================================
+
+def clean_html_url(value):
+
+    # Nothing provided
+    if not value:
+        return ""
+    
+    value = str(value).strip()
+
+    try:
+
+        # Parse HTML safely
+        soup = BeautifulSoup(value, "html.parser")
+
+        # Look for href link
+        tag = soup.find("a", href=True)
+
+        if tag: 
+
+            # Return actual URL
+            return tag["href"]
+
+    except Exception:
+        pass
+
+    # Return original value if not HTML
+    return value
+
 #--------------------------------------------------------------------
+
+# ============================================================
+# FUNCTION: normalize_url
+#
+# Purpose:
+# Clean one URL before it goes to wrapper detection,
+# IOC extraction, VirusTotal, Talos, URLScan, or reports.
+#
+# Input:
+# Raw URL string. It may contain:
+# - HTML anchor tag
+# - HTML entities
+# - defanged dots like [.]
+# - trailing punctuation
+#
+# Output:
+# Clean URL string.
+#
+# Layman explanation:
+# This function turns messy email URLs into a clean URL
+# that security tools can understand.
+# ============================================================
 
 def normalize_url(url: str) -> str:
     """
-    Purpose: Normalize and clean a URL string for IOC extraction.
-    Input: url (str) - raw URL candidate potentially including trailing punctuation
-    Output: cleaned url (str) suitable for parsing/IOC matching
-    """
-    if not url:
-        return url
-    # Basic trimming of whitespace and common trailing punctuation
-    return url.strip().strip(').,;"\'')
+    Normalize URL before IOC processing.
 
-# =========================================================================
-# URL WRAPPER DETECTION
+    Why:
+    - Remove HTML anchor tags
+    - Decode HTML entities
+    - Remove trailing junk
+    """
+
+    if not url:
+        return ""
+
+    text = str(url).strip()
+
+    # -------------------------------------------------
+    # Extract href directly if a full HTML anchor
+    # extract only the href value.
+    # -------------------------------------------------
+    href_match = re.search(
+        r'href="([^"]+)"',
+        text,
+        re.IGNORECASE
+    )
+
+    if href_match:
+        text = href_match.group(1)
+
+    # -------------------------------------------------
+    # Remove HTML entities
+    # -------------------------------------------------
+    try:
+        import html
+        text = html.unescape(text)
+    except Exception:
+        pass
+
+    # -------------------------------------------------
+    # Cleanup common trailing junk
+    # -------------------------------------------------
+    text = text.strip().strip(').,;"\'')
+
+    return text
+
+# ============================================================
+# W3C_SKIP_URLS
+#
+# Purpose:
+# Ignore HTML namespace/schema URLs.
 #
 # Why:
-# Many email security products rewrite URLs.
+# Emails often contain technical HTML references like:
+# - w3.org XHTML namespace
+# - XHTML DTD reference
 #
-# Example:
+# These are NOT links clicked by users.
+# These are NOT useful IOCs.
+# ============================================================
+
+W3C_SKIP_URLS = (
+    "www.w3.org",
+    "w3.org/1999/xhtml",
+    "xhtml1-transitional.dtd",
+)
+
+
+# ============================================================
+# FUNCTION: should_skip_url
 #
-# Original:
-#   https://evil.com/login
+# Purpose:
+# Decide whether a URL is noise and should not be analyzed.
 #
-# Delivered Email:
-#   https://safelinks.protection.outlook.com/?url=https://evil.com/login
+# Input:
+# Clean URL string
 #
-# We attempt to recover the real URL before IOC scanning.
-# =========================================================================
+# Output:
+# True  = skip this URL
+# False = keep this URL
+# ============================================================
+
+def should_skip_url(url: str) -> bool:
+
+    if not url:
+        return True
+
+    lower_url = str(url).lower()
+
+    return any(
+        noise in lower_url
+        for noise in W3C_SKIP_URLS
+    )
+
+
+# ============================================================
+# FUNCTION: is_http_url
+#
+# Purpose:
+# Check whether a value is a normal http/https URL.
+#
+# Input:
+# Any string
+#
+# Output:
+# True if it starts with http:// or https://
+# ============================================================
+
+def is_http_url(value: str) -> bool:
+
+    if not value:
+        return False
+
+    value = normalize_url(value)
+
+    return value.lower().startswith(
+        (
+            "http://",
+            "https://"
+        )
+    )
+
+# ============================================================
+# Known URL wrapper / tracking providers
+#
+# Purpose:
+# Identify security or marketing systems that rewrite URLs.
+#
+# Why:
+# We want to know whether a URL is the real destination
+# or only a wrapper/tracking URL.
+# ============================================================
 
 KNOWN_WRAPPERS = {
     "safelinks.protection.outlook.com": "Microsoft Safe Links",
     "urldefense.proofpoint.com": "Proofpoint",
     "protect-us.mimecast.com": "Mimecast",
     "linkprotect.cudasvc.com": "Barracuda",
-    "webdefence.global.blackspider.com": "MailControl",
+    "webdefence.global.blackspider.com": "MailControl / WebDefence",
     "mailcontrol.com": "MailControl",
+    "click.momence.com": "Momence Tracking",
+    "unsubscribe.momence.com": "Momence Unsubscribe",
 }
 
 WRAPPER_PARAMS = [
@@ -158,8 +334,30 @@ WRAPPER_PARAMS = [
 ]
 
 
+# ============================================================
+# FUNCTION: _decode_wrapper_value
+#
+# Purpose:
+# Try to recover a real destination URL from a wrapper value.
+#
+# Input:
+# A wrapper parameter value such as:
+# - url=https://example.com
+# - u=https-3A__example.com
+# - q=AXic... compressed payload
+#
+# Output:
+# Recovered URL or None.
+#
+# Layman explanation:
+# Some wrappers hide the real URL directly.
+# Some encode it.
+# Some compress it.
+# This function tries each method safely.
+# ============================================================
+
 def _decode_wrapper_value(value: Any) -> Optional[str]:
-    """Decode a wrapper payload recursively, including URL-encoding and base64/gzip variants."""
+
     if value is None:
         return None
 
@@ -170,78 +368,124 @@ def _decode_wrapper_value(value: Any) -> Optional[str]:
                 return decoded
         return None
 
-    text = str(value).strip()
-    if not text:
+    candidate = normalize_url(str(value))
+
+    if not candidate:
         return None
 
-    candidate = text
+    # Try repeated URL decoding.
+    # Example:
+    # https%3A%2F%2Fexample.com
+    # becomes:
+    # https://example.com
     for _ in range(5):
-        next_candidate = unquote(candidate)
-        if next_candidate == candidate:
-            break
-        candidate = next_candidate
+        decoded_candidate = unquote(candidate)
 
-    candidate = candidate.strip().strip('"\'<>')
-    if candidate.startswith(("http://", "https://")):
-        return candidate
+        if decoded_candidate == candidate:
+            break
+
+        candidate = normalize_url(decoded_candidate)
+
+    # Proofpoint sometimes represents ":" and "/" differently.
+    # Example:
+    # https-3A__example.com_login
+    # becomes:
+    # https://example.com/login
+    proofpoint_candidate = (
+        candidate
+        .replace("-3A__", "://")
+        .replace("-3a__", "://")
+        .replace("_", "/")
+    )
+
+    if is_http_url(proofpoint_candidate):
+        return normalize_url(proofpoint_candidate)
+
+    if is_http_url(candidate):
+        return normalize_url(candidate)
+
+    # Try Base64 / URL-safe Base64 decoding.
+    # Some wrappers store the destination in encoded form.
+    decoded_bytes = None
 
     try:
-        decoded_bytes = base64.b64decode(candidate.encode("utf-8"), altchars=b"-_", validate=False)
+        padded = candidate + "=" * (-len(candidate) % 4)
+
+        decoded_bytes = base64.urlsafe_b64decode(
+            padded.encode("utf-8")
+        )
+
     except Exception:
         decoded_bytes = None
 
     if decoded_bytes:
-        decoded_text = decoded_bytes.decode("utf-8", errors="ignore").strip().strip('"\'<>')
-        if decoded_text.startswith(("http://", "https://")):
-            return decoded_text
 
-        url_match = URL_REGEX.search(decoded_text)
-        if url_match:
-            return url_match.group(0)
+        # Try plain text first
+        try:
+            decoded_text = decoded_bytes.decode(
+                "utf-8",
+                errors="ignore"
+            )
 
-        nested = _decode_wrapper_value(decoded_text)
-        if nested:
-            return nested
+            decoded_text = normalize_url(decoded_text)
 
-        # Some wrapper services encode a zlib-compressed payload with a small
-        # prefix byte before the actual compressed stream.
-        for prefix_len in range(1, min(4, len(decoded_bytes))):
+            if is_http_url(decoded_text):
+                return decoded_text
+
+            match = URL_REGEX.search(decoded_text)
+
+            if match:
+                return normalize_url(match.group(0))
+
+        except Exception:
+            pass
+
+        # Try zlib decompression.
+        # MailControl URLWrap often needs this.
+        zlib_candidates = [
+            decoded_bytes,
+            decoded_bytes[1:],
+            decoded_bytes[2:],
+            decoded_bytes[3:],
+        ]
+
+        for blob in zlib_candidates:
+
+            if not blob:
+                continue
+
             try:
-                decompressed = zlib.decompress(decoded_bytes[prefix_len:])
+                decompressed = zlib.decompress(blob)
+
+                decompressed_text = decompressed.decode(
+                    "utf-8",
+                    errors="ignore"
+                )
+
+                match = URL_REGEX.search(decompressed_text)
+
+                if match:
+                    return normalize_url(match.group(0))
+
             except Exception:
-                decompressed = None
+                continue
 
-            if decompressed:
-                decompressed_text = decompressed.decode("utf-8", errors="ignore").strip().strip('"\'<>').rstrip('\x00')
-                if decompressed_text.startswith(("http://", "https://")):
-                    return decompressed_text
-
-                url_match = URL_REGEX.search(decompressed_text)
-                if url_match:
-                    return url_match.group(0)
-
-                nested = _decode_wrapper_value(decompressed_text)
-                if nested:
-                    return nested
-                break
-
+        # Try gzip decompression.
         try:
             decompressed = gzip.decompress(decoded_bytes)
+
+            decompressed_text = decompressed.decode(
+                "utf-8",
+                errors="ignore"
+            )
+
+            match = URL_REGEX.search(decompressed_text)
+
+            if match:
+                return normalize_url(match.group(0))
+
         except Exception:
-            decompressed = None
-
-        if decompressed:
-            decompressed_text = decompressed.decode("utf-8", errors="ignore").strip().strip('"\'<>')
-            if decompressed_text.startswith(("http://", "https://")):
-                return decompressed_text
-
-            url_match = URL_REGEX.search(decompressed_text)
-            if url_match:
-                return url_match.group(0)
-
-            nested = _decode_wrapper_value(decompressed_text)
-            if nested:
-                return nested
+            pass
 
     return None
 
@@ -315,6 +559,7 @@ def extract_embedded_url(url: str) -> Optional[str]:
             path_candidates.append(path[2:])
         if path.startswith("l/"):
             path_candidates.append(path[2:])
+            
         # capture patterns like /web/Redirect?u=<url>
         if "/web/Redirect" in path or "/web/rewrite" in path:
             # fallback to checking query params for known keys
@@ -618,6 +863,7 @@ def decode_attachment_payload(payload: Any) -> Optional[bytes]:
             return payload.encode(errors="ignore")
 
     return str(payload).encode(errors="ignore")
+
 
 def resolve_eml_path(input_path: str) -> Optional[str]:
     """

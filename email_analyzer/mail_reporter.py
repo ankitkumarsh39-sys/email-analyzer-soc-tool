@@ -160,6 +160,7 @@ class MailReporter:
             "attachments": email_data.get("attachments", []),
             "ioc_scoring": safe_ioc_scoring,
             "osint_summary": email_data.get("osint_summary", {}),
+            "analyst_comment": email_data.get("analyst_comment", ""), # Analyst-written investigation notes from UI
         }
 
         with open(report_path, "w", encoding="utf-8") as f:
@@ -173,6 +174,10 @@ class MailReporter:
         Create a detailed plain-text analyst report with the requested sections.
         If data is missing, prints 'N/A' for that field.
         """
+        print(
+            "TXT REPORT COMMENT =",
+            repr(email_data.get("analyst_comment"))
+        )
         ts = self._timestamp()
         report_path = os.path.join(self.output_dir, f"email_analysis_{ts}.txt")
 
@@ -395,6 +400,31 @@ class MailReporter:
                 f.write('No specific scoring reasons available.\n')
             f.write('\n')
 
+            # Analyst Comment
+#=========================================================================================
+# Purpose:
+# Add SOC analyst notes into the final TXT report.
+# 
+# Input:
+# email_data["analyst_comment"]
+#
+# Output:
+# Human-readable analyst comment section in TXT report.
+#=========================================================================================
+
+
+            f.write("=" * 80 + "\n")
+            f.write("ANALYST COMMNET \n")
+            f.write("=" * 80 + "\n\n")
+
+            analyst_comment = email_data.get("analyst_comment", "")
+
+            if analyst_comment and str(analyst_comment).strip():
+                f.write(str(analyst_comment).strip() + "\n\n")
+            else:
+                f.write("No analyst comment provided.\n\n")
+#--------------------------------------------------------------------------------------------
+
             # Recommended Actions
             f.write("=" * 80 + "\n")
             f.write("RECOMMENDED ACTIONS\n")
@@ -412,3 +442,153 @@ class MailReporter:
 
         logger.info("TXT report generated: %s", report_path)
         return report_path
+    
+    # ============================================================
+    # Blocklist Excel Export
+    #
+    # What does this function do?
+    # --------------------------------
+    # This function creates an Excel file that contains
+    # all malicious or suspicious IOCs detected in the email.
+    #
+    # Why do we need this?
+    # --------------------------------
+    # SOC analysts often want a quick list of:
+    # - malicious URLs
+    # - malicious domains
+    # - malicious IPs
+    #
+    # so they can:
+    # - block them
+    # - hunt for them in SIEM
+    # - share them with other analysts
+    #
+    # Input:
+    # --------------------------------
+    # email_data
+    #
+    # The same email analysis dictionary that is used
+    # throughout the project.
+    #
+    # Output:
+    # --------------------------------
+    # reports/ioc_blocklist.xlsx
+    #
+    # Example:
+    #
+    # IOC Type | IOC Value | Verdict | Risk Score
+    # ------------------------------------------------
+    # URL      | evil.com  | malicious | 95
+    # IP       | 1.2.3.4   | suspicious | 72
+    #
+    # Notes:
+    # --------------------------------
+    # Only malicious or suspicious IOCs are exported.
+    # Clean IOCs are ignored.
+    #
+    # ============================================================
+    def update_config_blocklist_excel(self, email_data):
+
+            try:
+
+                logger.info(
+                    "Starting blocklist Excel generation..."
+                )
+
+                blocklist_rows = []
+
+                # =======================================
+                # Read IOC scoring results
+                # =======================================
+                for item in email_data.get(
+                    "ioc_scoring",
+                    []
+                ):
+
+                    verdict = str(
+                        item.get(
+                            "category",
+                            ""
+                        )
+                    ).lower()
+
+                    # Only export bad indicators
+                    if verdict not in (
+                        "malicious",
+                        "suspicious"
+                    ):
+                        continue
+
+                    blocklist_rows.append({
+                        "IOC Type":
+                            item.get(
+                                "ioc_type",
+                                "Unknown"
+                            ),
+
+                        "IOC Value":
+                            item.get(
+                                "normalized",
+                                "Unknown"
+                            ),
+
+                        "Verdict":
+                            item.get(
+                                "category",
+                                "Unknown"
+                            ),
+
+                        "Risk Score":
+                            item.get(
+                                "final_score",
+                                ""
+                            )
+                    })
+
+                # =======================================
+                # Nothing found
+                # =======================================
+                if not blocklist_rows:
+
+                    logger.info(
+                        "No malicious IOC found for blocklist export."
+                    )
+
+                    return
+
+                # =======================================
+                # Create dataframe
+                # =======================================
+                df = pd.DataFrame(
+                    blocklist_rows
+                )
+
+                # =======================================
+                # Create output path
+                # =======================================
+                excel_path = os.path.join(
+                    self.output_dir,
+                    "ioc_blocklist.xlsx"
+                )
+
+                # =======================================
+                # Save Excel
+                # =======================================
+                df.to_excel(
+                    excel_path,
+                    index=False
+                )
+
+                logger.info(
+                    "Blocklist Excel generated: %s",
+                    excel_path
+                )
+
+            except Exception as exc:
+
+                logger.exception(
+                    "Failed to create blocklist Excel: %s",
+                    exc
+                )
+
+        

@@ -8,6 +8,7 @@ import ast
 import html
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
+from urllib.parse import quote_plus
 
 from pathlib import Path
 
@@ -61,6 +62,27 @@ def run_analysis_on_path(eml_path: str, force_reanalyze: bool = False) -> dict:
     email_data = analyze_email(eml_path, force_reanalyze_iocs=force_reanalyze)
     if not email_data:
         return {}
+
+    # ============================================================
+    # Ensure latest analyst comment goes into downloaded report
+    #
+    # Purpose:
+    # Streamlit text areas update interactively. Before report
+    # download, we copy the latest comment into email_data.
+    #
+    # Input:
+    # st.session_state["analyst_comment"]
+    #
+    # Output:
+    # email_data["analyst_comment"]
+    # ============================================================
+
+    if email_data is not None:
+
+        email_data["analyst_comment"] = st.session_state.get(
+            "analyst_comment",
+            ""
+        )
 
     reporter = MailReporter(output_dir="reports")
     txt_report_path = reporter.generate_text_report(email_data)
@@ -359,6 +381,17 @@ def analyze_inbox_for_date(target_date: datetime) -> int:
 # -------------------------------------------------------------------
 # Data Builders
 # -------------------------------------------------------------------
+PROVIDER_MANUAL_URLS = {
+    "anyrun": "https://any.run/",
+    "urlscan": "https://urlscan.io/",
+    "talos": "https://talosintelligence.com/",
+    "rdap": "https://rdap.org/",
+    "abuseipdb": "https://www.abuseipdb.com/",
+}
+
+
+#----------------------------------------------------------------------------------------
+
 def format_ioc_link(url: str, label: str = "Open") -> str:
     if not url:
         return ""
@@ -370,12 +403,44 @@ def format_ioc_link(url: str, label: str = "Open") -> str:
         f'border-radius:4px; cursor:pointer;">{safe_label}</button></a>'
     )
 
+#---------------------------------------------------------------------------------------
+
+def resolve_provider_link(provider_name: str, provider_data: dict) -> tuple[str, str]:
+    if not provider_data:
+        return "", ""
+
+    provider_name = str(provider_name or "").strip().lower()
+    if provider_name == "anyrun":
+        url = provider_data.get("url", "") or provider_data.get("result", "")
+    elif provider_name == "urlscan":
+        url = provider_data.get("result_url", "") or provider_data.get("result", "") or provider_data.get("url", "")
+    elif provider_name in {"talos", "rdap", "abuseipdb"}:
+        if isinstance(provider_data, dict):
+            url = provider_data.get("portal_lookup", "") or provider_data.get("lookup", "") or provider_data.get("url", "")
+        else:
+            url = str(provider_data)
+    else:
+        url = provider_data.get("url", "") if isinstance(provider_data, dict) else str(provider_data)
+
+    if url:
+        return url, ""
+
+    if provider_name in PROVIDER_MANUAL_URLS:
+        status = str(provider_data.get("status", "")).lower() if isinstance(provider_data, dict) else ""
+        if status.startswith(("failed_", "error", "not_found", "unavailable", "unauthorized")):
+            return PROVIDER_MANUAL_URLS[provider_name], "Result not found; CLICK IT for manual lookup."
+
+        return PROVIDER_MANUAL_URLS[provider_name], "No provider URL available; open manual lookup for analysis."
+
+    return "", ""
+
+#---------------------------------------------------------------------------------------
 
 def render_ioc_html_table(df: pd.DataFrame) -> str:
     if df.empty:
         return ""
     header_cells = "".join(
-        f'<th style="padding:8px 10px; text-align:left; background:#f3f4f6; position:sticky; top:0; z-index:2; border-bottom:1px solid #d1d5db;">{html.escape(str(col))}</th>'
+        f'<th style="padding:8px 10px; text-align:left; background:black; position:sticky; top:0; z-index:2; border-bottom:1px solid #d1d5db;">{html.escape(str(col))}</th>'
         for col in df.columns
     )
     rows_html = []
@@ -403,12 +468,13 @@ def render_ioc_html_table(df: pd.DataFrame) -> str:
     )
     return table_html
 
-
+#---------------------------------------------------------------------------------------
 def build_ioc_df(email_data: dict) -> pd.DataFrame:
     """
     Main IOC Results table with integrated OSINT summary fields.
     """
     rows = []
+    rows1 = []
     for item in email_data.get("ioc_scoring", []) or []:
         provider = item.get("provider_context", {}) or {}
         whois = provider.get("whois", {}) or {}
@@ -421,7 +487,10 @@ def build_ioc_df(email_data: dict) -> pd.DataFrame:
         talos_lookup = talos.get("portal_lookup") if isinstance(talos, dict) else str(talos)
         rdap_lookup = rdap.get("portal_lookup") if isinstance(rdap, dict) else str(rdap)
         urlscan_result = urlscan.get("result_url", "") or urlscan.get("result", "") or urlscan.get("url", "")
-        anyrun_url = anyrun.get("url", "") or anyrun.get("result", "")
+        anyrun_url, anyrun_note = resolve_provider_link("anyrun", anyrun)
+        talos_url, talos_note = resolve_provider_link("talos", talos)
+        rdap_url, rdap_note = resolve_provider_link("rdap", rdap)
+        urlscan_url, urlscan_note = resolve_provider_link("urlscan", urlscan)
 
         rows.append({
             "Type": item.get("ioc_type", "").upper(),
@@ -431,16 +500,22 @@ def build_ioc_df(email_data: dict) -> pd.DataFrame:
             "AbuseIPDB Score": abuseipdb.get("abuse_score", ""),
             "ANY.RUN Status": anyrun.get("status", ""),
             "ANY.RUN URL": anyrun_url,
-            "URLScan Result": urlscan_result,
+            "ANY.RUN Note": anyrun_note,
+            "URLScan Result": urlscan_url,
+            "URLScan Note": urlscan_note,
             "WHOIS Age (days)": whois.get("age_days", ""),
             "Registrar": whois.get("registrar", ""),
-            "Talos Lookup": talos_lookup,
-            "RDAP Lookup": rdap_lookup,
+            "Talos Lookup": talos_url,
+            "Talos Note": talos_note,
+            "RDAP Lookup": rdap_url,
+            "RDAP Note": rdap_note,
             "Whitelisted": item.get("is_whitelisted", False),
             "Blocklisted": item.get("is_blocklisted", False),
         })
+    
     return pd.DataFrame(rows)
 
+#------------------------------------------------------------------------------------------------------
 
 def build_url_wrapper_df(email_data: dict) -> pd.DataFrame:
     rows = []
@@ -455,6 +530,8 @@ def build_url_wrapper_df(email_data: dict) -> pd.DataFrame:
             "Wrapped": item.get("wrapped", False),
         })
     return pd.DataFrame(rows)
+
+#---------------------------------------------------------------------------------------------------------
 
 # This code is used to build the attachment DataFrame for the email analysis dashboard.
 
@@ -478,6 +555,7 @@ def build_attachment_df(email_data: dict) -> pd.DataFrame:
         })
     return pd.DataFrame(rows)
 
+#----------------------------------------------------------------------------------------------------------------
 
 def build_ioc_observed_df(email_data: dict) -> pd.DataFrame:
     """
@@ -498,6 +576,7 @@ def build_ioc_observed_df(email_data: dict) -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
+#-------------------------------------------------------------------------------------------------------------------
 
 def build_ioc_osint_df(email_data: dict) -> pd.DataFrame:
     rows = []
@@ -570,6 +649,7 @@ def build_ioc_osint_df(email_data: dict) -> pd.DataFrame:
 
     return pd.DataFrame(rows)
 
+#-------------------------------------------------------------------------------------------------------------------
 
 def build_domain_whois_summary_df(email_data: dict) -> pd.DataFrame:
     """
@@ -594,7 +674,7 @@ def build_domain_whois_summary_df(email_data: dict) -> pd.DataFrame:
 
     return pd.DataFrame(rows)
 
-
+#-------------------------------------------------------------------------------------------------------------------
 def format_hop_date(date_str: str):
     if not date_str:
         return {"utc": "", "ist": ""}
@@ -619,6 +699,7 @@ def format_hop_date(date_str: str):
         print(f"Date parse error: {date_str} | {e}")
         return {"utc": "", "ist": ""}
 
+#-------------------------------------------------------------------------------------------------------------------
 
 def normalize_received_hops(email_data: dict):
     normalized = []
@@ -662,6 +743,8 @@ def normalize_received_hops(email_data: dict):
 
     return normalized
 
+#-------------------------------------------------------------------------------------------------------------------
+
 def build_received_hops_df(email_data: dict) -> pd.DataFrame:
     hops = email_data.get("received_hops", []) or []
     rows = []
@@ -693,6 +776,7 @@ def build_received_hops_df(email_data: dict) -> pd.DataFrame:
 
     return pd.DataFrame(rows)
 
+#-------------------------------------------------------------------------------------------------------------------
 
 def detect_hop_risk(hop: dict):
     risks = []
@@ -717,6 +801,7 @@ def detect_hop_risk(hop: dict):
 
     return ", ".join(risks)
 
+#-------------------------------------------------------------------------------------------------------------------
 
 def highlight_risk(row):
     if "🚨" in str(row.get("Risk", "")):
@@ -726,6 +811,7 @@ def highlight_risk(row):
     else:
         return [""] * len(row)
     
+#-------------------------------------------------------------------------------------------------------------------
 
 def render_received_hop_details(email_data: dict):
     """
@@ -755,6 +841,8 @@ def render_received_hop_details(email_data: dict):
             #else:
              #   st.code(str(hop), language="text")
 
+#----------------------------------------------------------------------------------------------------------
+
 def build_subject_analysis_df(email_data: dict) -> pd.DataFrame:
     subj = email_data.get("subject_analysis", {}) or {}
     rows = [{"Field": "Subject Severity", "Value": subj.get("subject_severity", "Unknown")}]
@@ -762,6 +850,7 @@ def build_subject_analysis_df(email_data: dict) -> pd.DataFrame:
         rows.append({"Field": "Indicator", "Value": flag})
     return pd.DataFrame(rows)
 
+#----------------------------------------------------------------------------------------------------------
 
 def build_body_summary_df(email_data: dict) -> pd.DataFrame:
     body = email_data.get("body_stats", {}) or {}
@@ -772,6 +861,7 @@ def build_body_summary_df(email_data: dict) -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
+#----------------------------------------------------------------------------------------------------------
 
 def build_mismatch_df(email_data: dict) -> pd.DataFrame:
     mismatch = (email_data.get("header_analysis", {}) or {}).get("mismatch_flags", {}) or {}
@@ -786,6 +876,7 @@ def build_mismatch_df(email_data: dict) -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
+#----------------------------------------------------------------------------------------------------------
 
 def build_campaign_summary_df(email_data: dict) -> pd.DataFrame:
     campaign = email_data.get("campaign", {}) or {}
@@ -799,6 +890,7 @@ def build_campaign_summary_df(email_data: dict) -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
+#----------------------------------------------------------------------------------------------------------
 
 def build_alert_summary_df(email_data: dict) -> pd.DataFrame:
     alert = email_data.get("alert", {}) or {}
@@ -812,6 +904,7 @@ def build_alert_summary_df(email_data: dict) -> pd.DataFrame:
 
     return pd.DataFrame(rows)
 
+#--------------------------------------------------------------------------------------------------------------
 
 def build_osint_df(provider: dict) -> pd.DataFrame:
     rows = []
@@ -886,6 +979,7 @@ def build_osint_df(provider: dict) -> pd.DataFrame:
 
     return pd.DataFrame(rows)
 
+#-------------------------------------------------------------------------------------------------------------
 
 def show_ioc_detail(email_data: dict, selected_value: str):
     selected = None
@@ -962,35 +1056,44 @@ def show_ioc_detail(email_data: dict, selected_value: str):
         rdap_url = ""
         urlscan_url = ""
         anyrun_url = ""
-
-        if provider.get("talos"):
-            talos_data = provider["talos"]
-            talos_url = talos_data.get("portal_lookup", "") if isinstance(talos_data, dict) else str(talos_data)
-
-        if provider.get("rdap"):
-            rdap_data = provider["rdap"]
-            rdap_url = rdap_data.get("portal_lookup", "") if isinstance(rdap_data, dict) else str(rdap_data)
-
-        if provider.get("urlscan"):
-            urlscan_data = provider["urlscan"] or {}
-            urlscan_url = urlscan_data.get("result_url", "") or urlscan_data.get("result", "") or urlscan_data.get("url", "")
+        talos_note = ""
+        rdap_note = ""
+        urlscan_note = ""
+        anyrun_note = ""
 
         if provider.get("anyrun"):
             anyrun_data = provider["anyrun"] or {}
-            anyrun_url = anyrun_data.get("url", "") or anyrun_data.get("result", "")
+            anyrun_url, anyrun_note = resolve_provider_link("anyrun", anyrun_data)
+        if provider.get("talos"):
+            talos_data = provider["talos"] or {}
+            talos_url, talos_note = resolve_provider_link("talos", talos_data)
+        if provider.get("rdap"):
+            rdap_data = provider["rdap"] or {}
+            rdap_url, rdap_note = resolve_provider_link("rdap", rdap_data)
+        if provider.get("urlscan"):
+            urlscan_data = provider["urlscan"] or {}
+            urlscan_url, urlscan_note = resolve_provider_link("urlscan", urlscan_data)
 
         with cols[0]:
             if talos_url:
                 st.link_button("Open Talos", talos_url, type="primary")
+            if talos_note:
+                st.caption(talos_note)
         with cols[1]:
             if rdap_url:
                 st.link_button("Open RDAP", rdap_url)
+            if rdap_note:
+                st.caption(rdap_note)
         with cols[2]:
             if urlscan_url:
                 st.link_button("Open URLScan", urlscan_url)
+            if urlscan_note:
+                st.caption(urlscan_note)
         with cols[3]:
             if anyrun_url:
                 st.link_button("Open ANY.RUN", anyrun_url)
+            if anyrun_note:
+                st.caption(anyrun_note)
 
 
 # -------------------------------------------------------------------
@@ -1184,14 +1287,14 @@ if 'analyze_by_date' in locals() and analyze_by_date:
 if st.session_state.analysis_done and st.session_state.email_data:
     email_data = st.session_state.email_data
 
-    # Top Summary
+# Top Summary
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Severity", email_data.get("email_severity", "Unknown"))
     c2.metric("Score", email_data.get("email_score", 0))
     c3.metric("Alert", (email_data.get("alert", {}) or {}).get("level", "Unknown"))
     c4.metric("Campaign Confidence", (email_data.get("campaign", {}) or {}).get("confidence", "Unknown"))
 
-    # Email Overview
+# Email Overview
     st.markdown("## 📌 Email Overview")
     ov1, ov2 = st.columns(2)
 
@@ -1204,11 +1307,11 @@ if st.session_state.analysis_done and st.session_state.email_data:
         st.write(f"**File:** {st.session_state.last_uploaded_name or ''}")
         st.write(f"**Report:** {safe_report_time()}")
         
-    tab_ioc, tab_att, tab_summary, tab_header, tab_raw, tab_lists = st.tabs(
-        ["IOC Results", "Attachments", "Summary", "Header Details", "Raw / JSON", "Whitelist / Blocklist"]
+    tab_summary, tab_ioc, tab_att, tab_header, tab_raw, tab_comment, tab_response, tab_lists = st.tabs(
+        ["📊 Summary", "🔍 IOC Results", "📎 Attachments", "📨 Header Details", "📄 Raw / JSON", "📝 Analyst Comments", "🚨 Response Actions", "✅ Whitelist / Blocklist"]
     )
 
-    # IOC Results
+# IOC Results
     with tab_ioc:
         st.subheader("IOC Results")
 
@@ -1262,7 +1365,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
         else:
             st.info("No IOC results available.")
 
-    # Attachments
+# Attachments
     with tab_att:
         st.subheader("Attachments")
         att_df = build_attachment_df(email_data)
@@ -1285,23 +1388,31 @@ if st.session_state.analysis_done and st.session_state.email_data:
                     st.write(f"**VT Upload Status:** {vt_upload.get('status', 'N/A')}")
 
                     st.write(f"**ANY.RUN Status:** {anyrun.get('status', 'N/A')}")
-                    #if anyrun.get("analysis_id"):
-                        #st.write(f"**ANY.RUN Analysis ID:** {anyrun.get('analysis_id')}")
+                    anyrun_link, anyrun_note = resolve_provider_link("anyrun", anyrun)
+                    if anyrun_link:
+                        st.markdown(
+                            f"<a href=\"{anyrun_link}\" target=\"_blank\"><button style=\"padding:8px 14px; border:none; background-color:#0078d4; color:white; border-radius:4px; cursor:pointer;\">Open ANY.RUN</button></a>",
+                            unsafe_allow_html=True,
+                        )
+                    if anyrun_note:
+                        st.caption(anyrun_note)
                     if anyrun.get("url"):
                         st.markdown(f"**ANY.RUN URL:** [{anyrun.get('url')}]({anyrun.get('url')})")
 
-                    if talos.get("portal_lookup"):
-                        talos_link = talos.get("portal_lookup")
+                    talos_link, talos_note = resolve_provider_link("talos", talos)
+                    if talos_link:
                         st.markdown(
                             f"<a href=\"{talos_link}\" target=\"_blank\"><button style=\"padding:8px 14px; border:none; background-color:#0078d4; color:white; border-radius:4px; cursor:pointer;\">Open Talos</button></a>",
                             unsafe_allow_html=True,
                         )
+                    if talos_note:
+                        st.caption(talos_note)
 
                     if anyrun_report:
                         st.markdown("#### ANY.RUN Retrieved Report")
                         st.json(anyrun_report)
 
-    # Whitelist / Blocklist
+# Whitelist / Blocklist
     with tab_lists:
         st.subheader("Config: Whitelist and Blocklist")
         st.write("Review the configured whitelist and blocklist spreadsheets used by the analysis pipeline.")
@@ -1341,7 +1452,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
-    # Summary
+# Summary
     with tab_summary:
         st.subheader("🧠 Threat Summary")
 
@@ -1375,7 +1486,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
         st.markdown("### 🚨 Alert Summary")
         st.dataframe(build_alert_summary_df(email_data), use_container_width=True, hide_index=True)
 
-    # Header Details
+# Header Details
     with tab_header:
         st.subheader("Header Details")
 
@@ -1406,6 +1517,135 @@ if st.session_state.analysis_done and st.session_state.email_data:
         st.markdown("### 🏷 Headers (Focus)")
         st.json(email_data.get("headers_focus", {}))
 
+    # COMMENTs
+
+    #---------------------------------------------------------------------------
+    # Allow the SOC Analyst to Write investigation notes.
+    # 
+    # Input:
+    # Analyst types a free-text comment in the UI.
+    # 
+    # Output:
+    # The comment is stored inside email_data so it can appear in:
+    # - UI
+    # - TXT report
+    # - JSON report
+    # 
+    # Layman explanation:
+    # This gives the analyst a place to write their conclusion, extra notes, escalation details, or response actions.
+
+        
+    with tab_comment:
+
+        st.markdown("## 📝 Analyst Comment")
+        analyst_comment = st.text_area(
+            "Analyst Comment", 
+            value=st.session_state.get("analyst_comment", ""),
+            height=180,
+            placeholder=(
+                "Example: Email appears suspicious due to URL wrapper, "
+                "Brand impersonation, and recovered login URL. "
+                "Recommend blocking final IOC URL and searching for similar messages. "
+            )
+        )
+
+        # Store comment in Sreamlit session so it survives UI refreshes
+        st.session_state["analyst_comment"] = analyst_comment
+
+        # Store comment in eamil_data so reporter can use it 
+        if email_data is not None:
+            email_data["analyst_comment"] = analyst_comment
+
+        if analyst_comment.strip():
+
+            with st.container(border=True):
+                st.markdown("### 🧾 Comment Preview")
+
+                st.info(
+                    analyst_comment
+                )
+        else:
+            st.warning(
+                "No analyst comment added yet."
+            )
+    #-----------------------------------------------------------------------------
+
+    # Final Comments
+
+    with tab_response:
+
+            st.markdown("## 📝 Analyst Investigation")
+
+            finding = st.text_area(
+                "Finding",
+                value=st.session_state.get(
+                    "finding",
+                    ""
+                ),
+                height=100
+            )
+
+            action_taken = st.text_area(
+                "Action Taken",
+                value=st.session_state.get(
+                    "action_taken",
+                    ""
+                ),
+                height=100
+            )
+
+            recommendation = st.text_area(
+                "Recommendation",
+                value=st.session_state.get(
+                    "recommendation",
+                    ""
+                ),
+                height=100
+            )
+
+            final_verdict = st.selectbox(
+                "Final Analyst Verdict",
+                [
+                    "Benign",
+                    "Suspicious",
+                    "Phishing",
+                    "Malicious",
+                    "Needs Further Investigation",
+                    "No Threat Observed"
+                ]
+            )
+
+            # Save all fields
+            st.session_state["finding"] = finding
+            st.session_state["action_taken"] = action_taken
+            st.session_state["recommendation"] = recommendation
+            st.session_state["final_verdict"] = final_verdict
+
+            if st.session_state.get("email_data"):
+
+                st.session_state.email_data[
+                    "analyst_comments"
+                ] = {
+                    "finding": finding,
+                    "action_taken": action_taken,
+                    "recommendation": recommendation,
+                    "final_verdict": final_verdict
+                }
+
+    #----------------------------------------------------------------------------------
+            st.markdown("---")
+
+            st.checkbox("Block Domain")
+            st.checkbox("Block URL")
+            st.checkbox("Block Sender")
+            st.checkbox("Submit to Sandbox")
+            st.checkbox("Escalate to Tire 2")
+            st.checkbox("Search Similar Emails")
+
+            response_notes = st.text_area("Response Notes", height=150)
+
+
+#---------------------------------------------------------------------------
     # Raw / JSON + Downloads
     with tab_raw:
         
@@ -1437,7 +1677,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
             txt_report_path = st.session_state.get("txt_report_path")
             if txt_report_path and os.path.exists(txt_report_path):
                 st.download_button(
-                    label="⬇ Download TXT Report",
+                    label="📄 Downloadable Report",
                     data=read_file_bytes(txt_report_path),
                     file_name=os.path.basename(txt_report_path),
                     mime="text/plain",
@@ -1451,3 +1691,5 @@ elif uploaded is not None and not run_analysis:
     st.info("Upload complete. Click **Run Analysis** in the sidebar to start.")
 else:
     st.info("Upload an .eml file from the sidebar and click **Run Analysis**.")
+
+

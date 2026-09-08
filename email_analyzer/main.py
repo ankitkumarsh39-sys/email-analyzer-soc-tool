@@ -295,7 +295,9 @@ def main():
         reporter.update_config_blocklist_excel(email_data)
 
         # ✅ Generate blocklist report file
-        blocklist_path = reporter.generate_blocklist_report(email_data)
+        # Generate IOC blocklist Excel
+        reporter.update_config_blocklist_excel(email_data)
+        blocklist_path = "reports/ioc_blocklist.xlsx"
 
         logger.debug("Blocklist path: %s", blocklist_path)
         logger.info("Blocklist generated:")
