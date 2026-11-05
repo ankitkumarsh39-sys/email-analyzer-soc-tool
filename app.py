@@ -1892,13 +1892,63 @@ if st.session_state.analysis_done and st.session_state.email_data:
     #----------------------------------------------------------------------------------
             st.markdown("---")
 
-            st.checkbox("Block Domain")
-            st.checkbox("Block URL")
-            st.checkbox("Block Sender")
-            st.checkbox("Escalate to Tire 2")
-            st.checkbox("Search Similar Emails")
+            block_domain = st.checkbox("Block Domain", key="block_domain")
+            block_url = st.checkbox("Block URL", key="block_url")
+            block_sender = st.checkbox("Block Sender", key="block_sender")
+            escalate_tier2 = st.checkbox("Escalate to Tire 2", key="escalate_tier2")
+            search_similar = st.checkbox("Search Similar Emails", key="search_similar")
 
             response_notes = st.text_area("Response Notes", height=150)
+
+            if st.button("✅ Submit Final Investigation", key="submit_final_investigation"):
+                final_email_data = st.session_state.get("email_data")
+                if not final_email_data:
+                    st.error("No email analysis is loaded to submit.")
+                else:
+                    final_email_data["analyst_comment"] = st.session_state.get("analyst_comment", "")
+                    final_email_data["response_actions"] = {
+                        "finding": finding,
+                        "action_taken": action_taken,
+                        "recommendation": recommendation,
+                        "final_verdict": final_verdict,
+                        "block_domain": block_domain,
+                        "block_url": block_url,
+                        "block_sender": block_sender,
+                        "escalate_tier2": escalate_tier2,
+                        "search_similar": search_similar,
+                        "response_notes": response_notes,
+                        "submitted_time": datetime.now().astimezone().isoformat(timespec="seconds"),
+                    }
+                    final_email_data["investigation_submitted"] = True
+                    st.session_state.email_data = final_email_data
+
+                    # Create final reports from saved data without running analysis again.
+                    ensure_reports_dir()
+                    final_reporter = MailReporter(output_dir="reports")
+                    st.session_state.txt_report_path = final_reporter.generate_text_report(final_email_data)
+                    st.session_state.json_report_path = final_reporter.generate_json_report(final_email_data)
+                    st.success("Investigation submitted and final reports generated successfully.")
+
+            current_email_data = st.session_state.get("email_data") or {}
+            if current_email_data.get("investigation_submitted"):
+                final_txt_path = st.session_state.get("txt_report_path")
+                final_json_path = st.session_state.get("json_report_path")
+                if final_txt_path and os.path.exists(final_txt_path):
+                    st.download_button(
+                        label="📄 Download Final TXT",
+                        data=read_file_bytes(final_txt_path),
+                        file_name=os.path.basename(final_txt_path),
+                        mime="text/plain",
+                        key="download_final_txt",
+                    )
+                if final_json_path and os.path.exists(final_json_path):
+                    st.download_button(
+                        label="📊 Download Final JSON",
+                        data=read_file_bytes(final_json_path),
+                        file_name=os.path.basename(final_json_path),
+                        mime="application/json",
+                        key="download_final_json",
+                    )
 
 
 #---------------------------------------------------------------------------

@@ -162,6 +162,8 @@ class MailReporter:
             "ioc_scoring": safe_ioc_scoring,
             "osint_summary": email_data.get("osint_summary", {}),
             "analyst_comment": email_data.get("analyst_comment", ""), # Analyst-written investigation notes from UI
+            "response_actions": email_data.get("response_actions", {}),
+            "investigation_submitted": email_data.get("investigation_submitted", False),
         }
 
         with open(report_path, "w", encoding="utf-8") as f:
@@ -514,7 +516,7 @@ class MailReporter:
 
 
             f.write("=" * 80 + "\n")
-            f.write("ANALYST COMMNET \n")
+            f.write("ANALYST COMMENTS\n")
             f.write("=" * 80 + "\n\n")
 
             analyst_comment = email_data.get("analyst_comment", "")
@@ -524,6 +526,34 @@ class MailReporter:
             else:
                 f.write("No analyst comment provided.\n\n")
 #--------------------------------------------------------------------------------------------
+
+            # Include final response details when the investigation is submitted.
+            response_actions = email_data.get("response_actions", {}) or {}
+            f.write("=" * 80 + "\n")
+            f.write("FINAL INVESTIGATION / RESPONSE ACTIONS\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Finding           : { _safe(response_actions.get('finding')) }\n")
+            f.write(f"Action Taken      : { _safe(response_actions.get('action_taken')) }\n")
+            f.write(f"Recommendation    : { _safe(response_actions.get('recommendation')) }\n")
+            f.write(f"Final Verdict     : { _safe(response_actions.get('final_verdict')) }\n")
+            f.write(f"Block Domain      : { _safe(response_actions.get('block_domain')) }\n")
+            f.write(f"Block URL         : { _safe(response_actions.get('block_url')) }\n")
+            f.write(f"Block Sender      : { _safe(response_actions.get('block_sender')) }\n")
+            f.write(f"Escalate Tier 2   : { _safe(response_actions.get('escalate_tier2')) }\n")
+            f.write(f"Search Similar    : { _safe(response_actions.get('search_similar')) }\n")
+            selected_actions = [
+                label for key, label in (
+                    ('block_domain', 'Block Domain'),
+                    ('block_url', 'Block URL'),
+                    ('block_sender', 'Block Sender'),
+                    ('escalate_tier2', 'Escalate to Tier 2'),
+                    ('search_similar', 'Search Similar Emails'),
+                )
+                if response_actions.get(key)
+            ]
+            f.write(f"Selected Actions  : { ', '.join(selected_actions) or 'None' }\n")
+            f.write(f"Response Notes    : { _safe(response_actions.get('response_notes')) }\n")
+            f.write(f"Submitted Time    : { _safe(response_actions.get('submitted_time')) }\n\n")
 
             # Recommended Actions
             f.write("=" * 80 + "\n")

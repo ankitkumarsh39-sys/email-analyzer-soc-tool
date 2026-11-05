@@ -839,6 +839,92 @@ def urlscan_lookup(url: str) -> dict:
         }
 
 
+def urlscan_search_lookup(value: str, search_type: str) -> dict:
+    """Search existing URLScan results without submitting a scan."""
+    if search_type not in {"domain", "ip"}:
+        return {"source": "urlscan", "status": "invalid_search_type"}
+
+    query = f"{search_type}:{value}"
+    search_url = f"https://urlscan.io/search/#{quote(query, safe=':')}"
+    headers = {"Accept": "application/json"}
+    if URLSCAN_API_KEY:
+        headers["api-key"] = URLSCAN_API_KEY
+
+    try:
+        response = requests.get(
+            "https://urlscan.io/api/v1/search/",
+            headers=headers,
+            params={"q": query, "size": 5},
+            timeout=15,
+        )
+        if response.status_code != 200:
+            logger.warning(
+                "URLScan search failed for %s: HTTP %s",
+                query,
+                response.status_code,
+            )
+            return {
+                "source": "urlscan",
+                "status": f"failed_{response.status_code}",
+                "query": query,
+                "search_url": search_url,
+            }
+
+        payload = response.json()
+        if not isinstance(payload, dict):
+            logger.warning("URLScan search returned invalid data for %s", query)
+            return {
+                "source": "urlscan",
+                "status": "invalid_response",
+                "query": query,
+                "search_url": search_url,
+            }
+
+        results = []
+        for item in payload.get("results", []) or []:
+            if not isinstance(item, dict):
+                continue
+            task = item.get("task", {}) or {}
+            page = item.get("page", {}) or {}
+            if not isinstance(task, dict) or not isinstance(page, dict):
+                continue
+            scan_id = task.get("uuid") or item.get("_id", "")
+            results.append({
+                "url": task.get("url") or page.get("url", ""),
+                "domain": page.get("domain", ""),
+                "ip": page.get("ip", ""),
+                "time": task.get("time", ""),
+                "result_url": f"https://urlscan.io/result/{scan_id}/" if scan_id else "",
+            })
+
+        return {
+            "source": "urlscan",
+            "status": "ok",
+            "query": query,
+            "result_count": payload.get("total", len(results)),
+            "results": results,
+            "search_url": search_url,
+        }
+    except requests.RequestException as exc:
+        logger.warning("URLScan search failed for %s: %s", query, exc)
+        return {
+            "source": "urlscan",
+            "status": "error",
+            "query": query,
+            "error": str(exc),
+            "search_url": search_url,
+        }
+    except ValueError as exc:
+        logger.warning("URLScan search response was invalid for %s: %s", query, exc)
+        return {
+            "source": "urlscan",
+            "status": "error",
+            "query": query,
+            "error": f"Invalid search response: {exc}",
+            "search_url": search_url,
+        }
+
+
 def talos_lookup_reference(value: str) -> dict:
     """
     Talos public site reference helper.
