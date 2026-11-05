@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import os
 import re
+import ipaddress
 import base64
 import gzip
 import hashlib
@@ -30,6 +31,7 @@ import logging
 import zlib
 import mailparser
 import html as html_lib
+import requests
 
 from typing import Optional, Dict, Any, List, Set
 
@@ -51,10 +53,12 @@ from email.header import decode_header
 from ioc_lib.ioc_analyzer import (
     IOCAnalyzer,
     AnalysisCancelled,
-    anyrun_file_lookup,
-    anyrun_get_analysis,
+    abuseipdb_lookup,
+    rdap_lookup_reference,
     talos_lookup_reference,
+    urlscan_search_lookup,
 )
+from email_analyzer.utils.whois_utils import whois_lookup
 
 logger = logging.getLogger(__name__)
 
@@ -994,6 +998,481 @@ def _header_mismatch_flags(headers: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _dns_record_lookup(name: str, record_type: str) -> Dict[str, Any]:
+    """Fetch one DNS record set through Google's JSON DNS endpoint."""
+    try:
+        response = requests.get(
+            "https://dns.google/resolve",
+            params={"name": name, "type": record_type},
+            headers={"Accept": "application/dns-json"},
+            timeout=5,
+        )
+        if response.status_code != 200:
+            status = f"failed_{response.status_code}"
+            logger.warning("Sender DNS lookup failed for %s %s: %s", name, record_type, status)
+            return {"status": status, "records": []}
+
+        payload = response.json()
+        if not isinstance(payload, dict):
+            logger.warning("Sender DNS lookup returned invalid data for %s %s", name, record_type)
+            return {"status": "invalid_response", "records": []}
+        answers = payload.get("Answer", []) or []
+        records = [
+            str(answer.get("data", "")).strip('"')
+            for answer in answers
+            if isinstance(answer, dict) and answer.get("data")
+        ]
+        if records:
+            return {"status": "ok", "records": records}
+        if payload.get("Status") == 3:
+            return {"status": "nxdomain", "records": []}
+        return {"status": "no_records", "records": []}
+    except requests.RequestException as exc:
+        logger.warning("Sender DNS lookup failed for %s %s: %s", name, record_type, exc)
+        return {"status": "error", "error": str(exc), "records": []}
+    except ValueError as exc:
+        logger.warning("Sender DNS response was invalid for %s %s: %s", name, record_type, exc)
+        return {"status": "error", "error": f"Invalid DNS response: {exc}", "records": []}
+
+
+def analyze_sender_intelligence(
+    headers: Dict[str, Any],
+    mismatch_flags: Dict[str, Any],
+    received_hops: List[Dict[str, Any]],
+    auth_results: Any,
+    ioc_engine: Optional[IOCAnalyzer],
+    ioc_scoring: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Collect sender domains and IP evidence, reusing IOC analysis results."""
+    domain_roles: Dict[str, List[str]] = {}
+    sender_addresses: Dict[str, List[str]] = {}
+    for header_name, role in (
+        ("From", "From"),
+        ("Reply-To", "Reply-To"),
+        ("Return-Path", "Return-Path"),
+        ("Sender", "Sender"),
+    ):
+        raw_value = _get_header(headers, header_name)
+        values = raw_value if isinstance(raw_value, (list, tuple)) else [raw_value]
+        values = [str(value) for value in values if value]
+        sender_addresses[role] = values
+        domains = re.findall(
+            r"(?i)[A-Z0-9._%+\-]+@((?:[A-Z0-9-]+\.)+[A-Z]{2,63})",
+            "\n".join(values),
+        )
+        if not domains:
+            fallback = mismatch_flags.get({
+                "From": "from_domain",
+                "Reply-To": "reply_to_domain",
+                "Return-Path": "return_path_domain",
+                "Sender": "sender_domain",
+            }[header_name])
+            domains = [fallback] if fallback else []
+        for domain in domains:
+            normalized = str(domain).lower().rstrip(".")
+            domain_roles.setdefault(normalized, [])
+            if role not in domain_roles[normalized]:
+                domain_roles[normalized].append(role)
+
+    sender_ip_sources: Dict[str, List[str]] = {}
+    for header_name in (
+        "Received",
+        "X-Originating-IP",
+        "X-Sender-IP",
+        "X-Client-IP",
+        "Authentication-Results",
+        "Received-SPF",
+    ):
+        value = _get_header(headers, header_name)
+        if isinstance(value, (list, tuple)):
+            values = [str(part) for part in value if part]
+        elif value:
+            values = [str(value)]
+        else:
+            values = []
+        if values:
+            sender_ip_sources[header_name] = values
+    for index, hop in enumerate(received_hops or []):
+        if isinstance(hop, dict) and hop.get("raw"):
+            sender_ip_sources.setdefault("Received", []).append(str(hop["raw"]))
+
+    sender_ips = set()
+    ip_pattern = re.compile(
+        r"(?<![\w])(?:\d{1,3}(?:\.\d{1,3}){3}|(?:[0-9A-Fa-f]{0,4}:){2,}[0-9A-Fa-f:.]*)(?![\w])"
+    )
+    ip_sources: Dict[str, List[str]] = {}
+    for source, values in sender_ip_sources.items():
+        for candidate in ip_pattern.findall("\n".join(values)):
+            try:
+                sender_ip = str(ipaddress.ip_address(candidate.strip("[]")))
+                sender_ips.add(sender_ip)
+                ip_sources.setdefault(sender_ip, [])
+                if source not in ip_sources[sender_ip]:
+                    ip_sources[sender_ip].append(source)
+            except ValueError:
+                continue
+
+    received_spf = _get_header(headers, "Received-SPF")
+    authentication_text = f"{auth_results or ''} {received_spf or ''}".lower()
+    spf_auth = (
+        "pass" if (
+            re.search(r"\bspf\s*=\s*pass\b", authentication_text)
+            or re.match(r"\s*pass\b", str(received_spf or ""), re.IGNORECASE)
+        )
+        else "fail" if (
+            re.search(r"\bspf\s*=\s*(?:fail|softfail|permerror)\b", authentication_text)
+            or re.match(r"\s*(?:fail|softfail|permerror)\b", str(received_spf or ""), re.IGNORECASE)
+        )
+        else "unknown"
+    )
+    dmarc_auth = (
+        "pass" if re.search(r"\bdmarc\s*=\s*pass\b", authentication_text)
+        else "fail" if re.search(r"\bdmarc\s*=\s*(?:fail|permerror)\b", authentication_text)
+        else "unknown"
+    )
+
+    existing_iocs = {
+        (str(item.get("ioc_type", "")).lower(), str(item.get("normalized", "")).lower()): item
+        for item in (ioc_scoring or [])
+    }
+    lookup_cache: Dict[tuple[str, str], Dict[str, Any]] = {}
+    abuseipdb_cache: Dict[str, Dict[str, Any]] = {}
+
+    def lookup_ioc(value: str, ioc_type: str) -> Dict[str, Any]:
+        key = (ioc_type, value.lower())
+        if key in lookup_cache:
+            return lookup_cache[key]
+
+        existing = existing_iocs.get(key)
+        if existing:
+            result = {
+                "virustotal": {
+                    "status": existing.get("vt_status", "unavailable"),
+                    "malicious": existing.get("vt_malicious", 0),
+                },
+                "provider_context": existing.get("provider_context", {}) or {},
+                "whitelisted": existing.get("is_whitelisted"),
+                "blocklisted": existing.get("is_blocklisted"),
+            }
+            lookup_cache[key] = result
+            return result
+
+        if ioc_engine is None:
+            result = {
+                "virustotal": {"status": "IOC analysis unavailable", "malicious": 0},
+                "provider_context": {},
+                "whitelisted": None,
+                "blocklisted": None,
+            }
+            lookup_cache[key] = result
+            return result
+        try:
+            record = ioc_engine.enrich_ioc(value, ioc_type)
+            result = {
+                "virustotal": {
+                    "status": record.vt_status,
+                    "malicious": record.vt_malicious,
+                },
+                "provider_context": record.provider_context or {},
+                "whitelisted": record.is_whitelisted,
+                "blocklisted": record.is_blocklisted,
+            }
+        except Exception as exc:
+            logger.warning("Sender IOC lookup failed for %s %s: %s", ioc_type, value, exc)
+            result = {
+                "virustotal": {"status": "lookup_error", "malicious": 0},
+                "provider_context": {},
+                "whitelisted": None,
+                "blocklisted": None,
+            }
+        lookup_cache[key] = result
+        return result
+
+    def lookup_abuseipdb(ip: str, providers: Dict[str, Any]) -> Dict[str, Any]:
+        normalized_ip = ip.lower()
+        if normalized_ip not in abuseipdb_cache:
+            result = providers.get("abuseipdb") or {}
+            if not result:
+                try:
+                    result = abuseipdb_lookup(ip)
+                except Exception as exc:
+                    logger.warning("AbuseIPDB lookup failed for sender IP %s: %s", ip, exc)
+                    result = {"status": "error", "error": str(exc)}
+            if result.get("status") != "ok":
+                logger.warning(
+                    "AbuseIPDB lookup unavailable for sender IP %s: %s",
+                    ip,
+                    result.get("status", "no_status"),
+                )
+            abuseipdb_cache[normalized_ip] = result
+        return abuseipdb_cache[normalized_ip]
+
+    urlscan_cache: Dict[tuple[str, str], Dict[str, Any]] = {}
+
+    def search_urlscan(value: str, search_type: str) -> Dict[str, Any]:
+        key = (search_type, value.lower())
+        if key not in urlscan_cache:
+            urlscan_cache[key] = urlscan_search_lookup(value, search_type)
+        return urlscan_cache[key]
+
+    domains_out = []
+    reasons = []
+    indicator_scores: Dict[str, int] = {}
+    low_risk_domains = []
+    mismatch_detected = any(
+        mismatch_flags.get(flag)
+        for flag in ("reply_to_mismatch", "return_path_mismatch", "sender_mismatch")
+    )
+
+    for domain, roles in sorted(domain_roles.items()):
+        indicator = lookup_ioc(domain, "domain")
+        providers = indicator["provider_context"]
+        whois = providers.get("whois") or {}
+        if not whois:
+            try:
+                whois = whois_lookup(domain)
+            except Exception:
+                logger.exception("WHOIS lookup failed for sender domain %s", domain)
+                whois = {"status": "error"}
+        if whois.get("status") != "ok":
+            logger.warning("WHOIS lookup unavailable for sender domain %s: %s", domain, whois.get("status", "no_status"))
+        dns = {
+            "a": _dns_record_lookup(domain, "A"),
+            "aaaa": _dns_record_lookup(domain, "AAAA"),
+            "mx": _dns_record_lookup(domain, "MX"),
+            "txt": _dns_record_lookup(domain, "TXT"),
+            "dmarc": _dns_record_lookup(f"_dmarc.{domain}", "TXT"),
+        }
+        spf_records = [
+            record for record in dns["txt"]["records"]
+            if record.lower().startswith("v=spf1")
+        ]
+        dmarc_records = [
+            record for record in dns["dmarc"]["records"]
+            if record.lower().startswith("v=dmarc1")
+        ]
+        spf_status = (
+            "found" if spf_records else
+            "not_found" if dns["txt"]["status"] in {"ok", "no_records"} else
+            dns["txt"]["status"]
+        )
+        dmarc_status = (
+            "found" if dmarc_records else
+            "not_found" if dns["dmarc"]["status"] in {"ok", "no_records"} else
+            dns["dmarc"]["status"]
+        )
+        resolved_ips = sorted(set(
+            ip
+            for record_type in ("a", "aaaa")
+            for ip in dns[record_type]["records"]
+        ))
+        resolved_ip_intelligence = []
+        resolved_ips_low_risk = True
+        for resolved_ip in resolved_ips:
+            ip_indicator = lookup_ioc(resolved_ip, "ip")
+            ip_providers = ip_indicator["provider_context"]
+            ip_abuse = lookup_abuseipdb(resolved_ip, ip_providers)
+            ip_risk_score = 0
+            ip_reasons = []
+            if ip_indicator["blocklisted"]:
+                ip_risk_score += 100
+                ip_reasons.append("Resolved IP address matches the blocklist.")
+            if int(ip_indicator["virustotal"].get("malicious", 0) or 0) > 0:
+                ip_risk_score += 30
+                ip_reasons.append("VirusTotal reports malicious activity for the resolved IP.")
+            try:
+                ip_abuse_score = int(ip_abuse.get("abuse_score", 0) or 0)
+            except (TypeError, ValueError):
+                ip_abuse_score = 0
+            if ip_abuse_score >= 70:
+                ip_risk_score += 25
+                ip_reasons.append(f"AbuseIPDB confidence score is {ip_abuse_score}.")
+            if ip_indicator["whitelisted"]:
+                ip_reasons.append("Resolved IP address matches the whitelist.")
+            reasons.extend(f"{resolved_ip}: {reason}" for reason in ip_reasons)
+            indicator_scores[resolved_ip] = max(
+                indicator_scores.get(resolved_ip, 0), min(100, ip_risk_score)
+            )
+            resolved_ips_low_risk = (
+                resolved_ips_low_risk
+                and ip_indicator["virustotal"].get("status") == "0 hits"
+                and ip_abuse.get("status") == "ok"
+                and ip_abuse_score < 70
+                and not ip_indicator["blocklisted"]
+            )
+            resolved_ip_intelligence.append({
+                "ip": resolved_ip,
+                "virustotal": ip_indicator["virustotal"],
+                "abuseipdb": ip_abuse,
+                "talos": ip_providers.get("talos", {}) or {},
+                "urlscan_search": search_urlscan(resolved_ip, "ip"),
+                "whitelisted": ip_indicator["whitelisted"],
+                "blocklisted": ip_indicator["blocklisted"],
+                "risk_score": min(100, ip_risk_score),
+                "reasons": ip_reasons,
+            })
+
+        urlscan_search = search_urlscan(domain, "domain")
+        age_days = whois.get("age_days")
+        score = 0
+        domain_reasons = []
+        if indicator["blocklisted"]:
+            score += 100
+            domain_reasons.append("Domain matches the blocklist.")
+        if int(indicator["virustotal"].get("malicious", 0) or 0) > 0:
+            score += 30
+            domain_reasons.append(
+                f"VirusTotal reports {indicator['virustotal']['malicious']} malicious detection(s)."
+            )
+        if mismatch_detected:
+            score += 15
+            domain_reasons.append("Sender header domains do not align.")
+        try:
+            age_days = int(age_days) if age_days is not None else None
+        except (TypeError, ValueError):
+            age_days = None
+        if age_days is not None and age_days < 30:
+            score += 20
+            domain_reasons.append(f"Domain is newly registered ({age_days} days old).")
+        elif age_days is not None and age_days < 90:
+            score += 10
+            domain_reasons.append(f"Domain is recently registered ({age_days} days old).")
+        if dns["txt"]["status"] in {"ok", "no_records"} and not spf_records:
+            score += 8
+            domain_reasons.append("No SPF record was found.")
+        if dns["dmarc"]["status"] in {"ok", "no_records"} and not dmarc_records:
+            score += 8
+            domain_reasons.append("No DMARC record was found.")
+        if spf_auth == "fail":
+            score += 10
+            domain_reasons.append("SPF authentication failed.")
+        if dmarc_auth == "fail":
+            score += 15
+            domain_reasons.append("DMARC authentication failed.")
+        if indicator["whitelisted"]:
+            domain_reasons.append("Domain matches the whitelist.")
+        if not domain_reasons:
+            domain_reasons.append("No domain risk indicators were confirmed.")
+
+        indicator_scores[domain] = min(100, score)
+        low_risk_domains.append(
+            age_days is not None
+            and age_days >= 90
+            and bool(spf_records)
+            and bool(dmarc_records)
+            and spf_auth == "pass"
+            and dmarc_auth == "pass"
+            and indicator["virustotal"].get("status") == "0 hits"
+            and not indicator["blocklisted"]
+            and resolved_ips_low_risk
+        )
+        reasons.extend(f"{domain}: {reason}" for reason in domain_reasons)
+        domains_out.append({
+            "domain": domain,
+            "headers": roles,
+            "addresses": {
+                role: sender_addresses.get(role, [])
+                for role in roles
+            },
+            "whois": whois,
+            "domain_age_days": age_days,
+            "rdap": providers.get("rdap", {}) or rdap_lookup_reference(domain),
+            "dns": dns,
+            "spf_records": spf_records,
+            "spf_status": spf_status,
+            "dmarc_records": dmarc_records,
+            "dmarc_status": dmarc_status,
+            "resolved_ips": resolved_ips,
+            "resolved_ip_intelligence": resolved_ip_intelligence,
+            "virustotal": indicator["virustotal"],
+            "talos": providers.get("talos", {}) or talos_lookup_reference(domain),
+            "urlscan_search": urlscan_search,
+            "whitelisted": indicator["whitelisted"],
+            "blocklisted": indicator["blocklisted"],
+            "risk_score": min(100, score + sum(
+                item["risk_score"] for item in resolved_ip_intelligence
+            )),
+            "reasons": domain_reasons,
+        })
+
+    ips_out = []
+    ip_scores = []
+    low_risk_ips = []
+    for ip in sorted(sender_ips):
+        indicator = lookup_ioc(ip, "ip")
+        providers = indicator["provider_context"]
+        abuseipdb = lookup_abuseipdb(ip, providers)
+        score = 0
+        ip_reasons = []
+        if indicator["blocklisted"]:
+            score += 100
+            ip_reasons.append("IP address matches the blocklist.")
+        if int(indicator["virustotal"].get("malicious", 0) or 0) > 0:
+            score += 30
+            ip_reasons.append(
+                f"VirusTotal reports {indicator['virustotal']['malicious']} malicious detection(s)."
+            )
+        try:
+            abuse_score = int(abuseipdb.get("abuse_score", 0) or 0)
+        except (TypeError, ValueError):
+            abuse_score = 0
+        if abuse_score >= 70:
+            score += 25
+            ip_reasons.append(f"AbuseIPDB confidence score is {abuse_score}.")
+        if indicator["whitelisted"]:
+            ip_reasons.append("IP address matches the whitelist.")
+        if not ip_reasons:
+            ip_reasons.append("No IP risk indicators were confirmed.")
+        indicator_scores[ip] = max(indicator_scores.get(ip, 0), min(100, score))
+        low_risk_ips.append(
+            indicator["virustotal"].get("status") == "0 hits"
+            and abuseipdb.get("status") == "ok"
+            and abuse_score < 70
+            and not indicator["blocklisted"]
+        )
+        reasons.extend(f"{ip}: {reason}" for reason in ip_reasons)
+        ips_out.append({
+            "ip": ip,
+            "sources": ip_sources.get(ip, []),
+            "virustotal": indicator["virustotal"],
+            "abuseipdb": abuseipdb,
+            "talos": providers.get("talos", {}) or talos_lookup_reference(ip),
+            "urlscan_search": search_urlscan(ip, "ip"),
+            "whitelisted": indicator["whitelisted"],
+            "blocklisted": indicator["blocklisted"],
+            "risk_score": min(100, score),
+            "reasons": ip_reasons,
+        })
+
+    risk_score = min(100, sum(indicator_scores.values()))
+    if risk_score >= 60:
+        verdict = "High Risk"
+    elif risk_score >= 30:
+        verdict = "Medium Risk"
+    elif risk_score > 0:
+        verdict = "Low Risk"
+    elif (
+        domains_out
+        and all(low_risk_domains)
+        and all(low_risk_ips)
+        and not mismatch_detected
+    ):
+        verdict = "Low Risk"
+    else:
+        verdict = "Needs Review"
+        reasons.append("Insufficient independent evidence to confirm a low-risk sender.")
+
+    return {
+        "risk_score": risk_score,
+        "verdict": verdict,
+        "reasons": reasons,
+        "authentication": {"spf": spf_auth, "dmarc": dmarc_auth},
+        "sender_addresses": sender_addresses,
+        "domains": domains_out,
+        "ips": ips_out,
+    }
+
+
 #-----------------------------------------------------------------
     """
     Keep only the most important headers for human-readable reporting.
@@ -1211,7 +1690,6 @@ def summarize_osint(ioc_scoring: List[Dict[str, Any]]) -> Dict[str, Any]:
         "providers_seen": set(),
         "urlscan_hits": 0,
         "abuseipdb_hits": 0,
-        "anyrun_submissions": 0,
     }
 
     for row in ioc_scoring:
@@ -1238,16 +1716,6 @@ def summarize_osint(ioc_scoring: List[Dict[str, Any]]) -> Dict[str, Any]:
 
             if abuse.get("abuse_score", 0) >= 70:
                 summary["abuseipdb_hits"] += 1
-
-        #---------------------
-        # ANY.RUN
-        #---------------------
-        anyrun = provider_context.get("anyrun",{}) or {}
-        if anyrun:
-            summary["providers_seen"].add("anyrun")
-
-            if anyrun.get("status") == "submitted":
-                summary["anyrun_submissions"] += 1
 
         #---------------------
         # Talos/RDAP
@@ -1674,6 +2142,27 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
         }
         ioc_scoring = []
 
+    # Reuse the IOC results so sender checks do not repeat provider calls.
+    try:
+        sender_intelligence = analyze_sender_intelligence(
+            headers=headers_raw,
+            mismatch_flags=mismatch_flags,
+            received_hops=received,
+            auth_results=auth_results,
+            ioc_engine=ioc_engine,
+            ioc_scoring=ioc_scoring,
+        )
+    except Exception as exc:
+        logger.error("Sender intelligence analysis failed.", exc_info=True)
+        sender_intelligence = {
+            "risk_score": 0,
+            "verdict": "Needs Review",
+            "reasons": ["Sender intelligence analysis failed."],
+            "domains": [],
+            "ips": [],
+            "error": str(exc),
+        }
+
     # -------------------------------------------------------------------------
     # Attachments
     # -------------------------------------------------------------------------
@@ -1710,15 +2199,8 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
                 if vt_malicious == 0:
                     vt_upload_result = ioc_engine.vt.submit_file_bytes(filename, payload)
  
-                anyrun_result = anyrun_file_lookup(filename, payload)
-                anyrun_report = {}
-                if anyrun_result.get("analysis_id"):
-                    anyrun_report = anyrun_get_analysis(anyrun_result["analysis_id"])
- 
                 talos_result = talos_lookup_reference(h)
             else:
-                anyrun_result = {}
-                anyrun_report = {}
                 talos_result = {}
 
             # ==============================
@@ -1731,8 +2213,6 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
                 "sha256": h,
                 "vt_hash": vt_hash_result,
                 "vt_upload": vt_upload_result,
-                "anyrun": anyrun_result,
-                "anyrun_report": anyrun_report,
                 "talos": talos_result,
             })
 
@@ -1788,6 +2268,7 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
         "iocs": iocs,
         "attachments": attachments_info,
         "sender_domains": list(sender_domains),
+        "sender_intelligence": sender_intelligence,
 
         # IOC scoring section for final reports
         "ioc_scoring": ioc_scoring,

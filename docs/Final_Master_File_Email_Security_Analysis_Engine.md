@@ -7,7 +7,7 @@ Build a SOC-grade Email Threat Analysis Engine that:
 - Parses .eml files
 - Extracts Indicators of Compromise (IOCs)
 - Performs multi-source OSINT enrichment
-- Executes sandbox analysis (URLs + files)
+- Enriches URLs and attachments with reputation services
 - Produces structured reports (TXT + JSON)
 - Supports automation + SIEM integration
 
@@ -57,7 +57,6 @@ Tools Used:
 - VirusTotal -> reputation
 - urlscan.io -> behavior + DOM analysis
 - Cisco Talos -> categorization
-- ANY.RUN -> sandbox execution
 - Hybrid Analysis -> detonation
 Purpose:
 - Detect phishing pages
@@ -68,7 +67,6 @@ FILE HASHES / ATTACHMENTS
 Tools Used:
 - VirusTotal -> AV detection
 - Cisco Talos -> file reputation
-- ANY.RUN -> sandbox detonation
 - Hybrid Analysis -> deep malware analysis
 Purpose:
 - Malware behavior detection
@@ -104,23 +102,22 @@ Used for initial classification
 
 Layer 2 — Behavior (DEEP)
 - urlscan
-- ANY.RUN
 - Hybrid Analysis
 Used for high-risk IOCs
 
-7. SANDBOX TRIGGER LOGIC (SMART EXECUTION)
+7. DEEP ANALYSIS TRIGGER LOGIC
 if vt_score == 0 and suspicious_pattern:
-    trigger sandbox
+    trigger deeper analysis
 elif vt_score <= 2:
-    trigger sandbox
+    trigger deeper analysis
 elif ioc_type == "hash" and unknown:
-    trigger sandbox
+    trigger deeper analysis
 
 Decision Table
-- Known malicious (VT > 5) -> No sandbox
-- Suspicious URL -> urlscan + ANY.RUN
-- Unknown file -> ANY.RUN + Hybrid Analysis
-- Clean domain -> No sandbox
+- Known malicious (VT > 5) -> No additional analysis
+- Suspicious URL -> urlscan
+- Unknown file -> Hybrid Analysis
+- Clean domain -> No additional analysis
 
 8. IOC DATA MODEL (FINAL)
 {
@@ -131,13 +128,11 @@ Decision Table
   "final_score": 6,
   "reasons": [
       "VT detections",
-      "urlscan malicious",
-      "ANY.RUN suspicious behavior"
+      "urlscan malicious verdict"
   ],
   "provider_context": {
       "virustotal": {...},
       "urlscan": {...},
-      "anyrun": {...},
       "hybrid_analysis": {...},
       "talos": {...},
       "abuseipdb": {...},
@@ -163,8 +158,7 @@ Example:
     "total_iocs_scored": 6,
     "malicious_iocs": 2,
     "providers_seen": ["urlscan", "talos", "abuseipdb"],
-    "urlscan_hits": 1,
-    "anyrun_submissions": 1
+    "urlscan_hits": 1
   }
 }
 
@@ -173,7 +167,6 @@ TXT REPORT
 IOC SCORING
 URL | example.com | VT=0 | FS=3 | WL=False | BL=False | Malicious
      OSINT: urlscan(malicious=True)
-            ANY.RUN(submitted)
             Talos(link)
      Reason: urlscan malicious behavior
 
@@ -224,6 +217,5 @@ Your project is now:
 - Email Analysis Engine
 - IOC Extraction Engine
 - Multi-source OSINT Platform
-- Sandbox Execution System
 - SOC Reporting Tool
 - Automation-ready Framework

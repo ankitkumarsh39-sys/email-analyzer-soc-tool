@@ -153,6 +153,7 @@ class MailReporter:
             "headers_raw": email_data.get("headers_raw", {}),
             "received_hops": email_data.get("received_hops", []),
             "auth_results": email_data.get("auth_results"),
+            "sender_intelligence": email_data.get("sender_intelligence", {}),
             "body_stats": email_data.get("body_stats", {}),
             "urls_extracted": email_data.get("urls_extracted", []),
             "urls_extracted_detail": email_data.get("urls_extracted_detail", []),
@@ -245,6 +246,108 @@ class MailReporter:
                     f.write(f"  {k:20s}: {v}\n")
             else:
                 f.write("  N/A\n")
+            f.write("\n")
+
+            # Sender Intelligence
+            sender_intelligence = email_data.get('sender_intelligence', {}) or {}
+            f.write("=" * 80 + "\n")
+            f.write("SENDER INTELLIGENCE\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Risk Score        : { _safe(sender_intelligence.get('risk_score', 0)) }\n")
+            f.write(f"Verdict           : { _safe(sender_intelligence.get('verdict', 'Needs Review')) }\n")
+            authentication = sender_intelligence.get('authentication', {}) or {}
+            f.write(f"SPF Authentication: { _safe(authentication.get('spf', 'unknown')) }\n")
+            f.write(f"DMARC Authentication: { _safe(authentication.get('dmarc', 'unknown')) }\n")
+
+            def _provider_value(value, status, label):
+                if value not in (None, "", [], {}):
+                    return value
+                if status in {"not_found", "nxdomain", "no_records"}:
+                    return "Not found"
+                if status and status not in {"ok", "found"}:
+                    return f"Unavailable ({status})"
+                return f"Unavailable ({label} did not provide this field)"
+
+            for reason in sender_intelligence.get('reasons', []) or []:
+                f.write(f"Reason            : { _safe(reason) }\n")
+
+            for domain in sender_intelligence.get('domains', []) or []:
+                dns = domain.get('dns', {}) or {}
+                whois = domain.get('whois', {}) or {}
+                talos = domain.get('talos', {}) or {}
+                rdap = domain.get('rdap', {}) or {}
+                urlscan = domain.get('urlscan_search', {}) or {}
+                resolved_ips = domain.get('resolved_ips', []) or []
+                resolved_statuses = [
+                    (dns.get(record_type, {}) or {}).get('status')
+                    for record_type in ('a', 'aaaa')
+                ]
+                resolved_status = (
+                    'found' if resolved_ips else
+                    'no_records' if all(
+                        status in {'ok', 'no_records', 'nxdomain'}
+                        for status in resolved_statuses
+                    ) else
+                    next((status for status in resolved_statuses if status not in {'ok', 'no_records', 'nxdomain'}), 'no_records')
+                )
+                f.write(f"\nDomain            : { _safe(domain.get('domain')) }\n")
+                f.write(f"Header roles      : { ', '.join(domain.get('headers', []) or []) or 'N/A' }\n")
+                f.write(f"WHOIS status      : { _safe(whois.get('status'), 'Unavailable (no result)') }\n")
+                f.write(f"Domain age (days) : { _provider_value(domain.get('domain_age_days'), whois.get('status'), 'WHOIS') }\n")
+                f.write(f"WHOIS Registrar   : { _provider_value(whois.get('registrar'), whois.get('status'), 'WHOIS') }\n")
+                f.write(f"WHOIS Created     : { _provider_value(whois.get('created'), whois.get('status'), 'WHOIS') }\n")
+                f.write(f"WHOIS Expires     : { _provider_value(whois.get('expires'), whois.get('status'), 'WHOIS') }\n")
+                f.write(f"WHOIS Nameservers : { ', '.join(whois.get('nameservers', []) or []) or _provider_value(None, whois.get('status'), 'WHOIS') }\n")
+                f.write(f"RDAP Lookup       : { _provider_value(rdap.get('portal_lookup'), rdap.get('status', 'ok'), 'RDAP') }\n")
+                f.write(f"SPF ({domain.get('spf_status', 'unknown')}): { ', '.join(domain.get('spf_records', []) or []) or _provider_value(None, domain.get('spf_status'), 'DNS') }\n")
+                f.write(f"DMARC ({domain.get('dmarc_status', 'unknown')}): { ', '.join(domain.get('dmarc_records', []) or []) or _provider_value(None, domain.get('dmarc_status'), 'DNS') }\n")
+                f.write(f"DNS A records     : { ', '.join((dns.get('a', {}) or {}).get('records', []) or []) or _provider_value(None, (dns.get('a', {}) or {}).get('status'), 'DNS') }\n")
+                f.write(f"DNS AAAA records  : { ', '.join((dns.get('aaaa', {}) or {}).get('records', []) or []) or _provider_value(None, (dns.get('aaaa', {}) or {}).get('status'), 'DNS') }\n")
+                f.write(f"DNS TXT           : { ', '.join((dns.get('txt', {}) or {}).get('records', []) or []) or _provider_value(None, (dns.get('txt', {}) or {}).get('status'), 'DNS') }\n")
+                f.write(f"Resolved IPs      : { ', '.join(resolved_ips) or _provider_value(None, resolved_status, 'DNS') }\n")
+                f.write(f"MX records        : { ', '.join((dns.get('mx', {}) or {}).get('records', []) or []) or _provider_value(None, (dns.get('mx', {}) or {}).get('status'), 'DNS') }\n")
+                f.write(f"VirusTotal        : { _safe((domain.get('virustotal', {}) or {}).get('status')) }\n")
+                f.write(f"VT malicious count: { _safe((domain.get('virustotal', {}) or {}).get('malicious', 0)) }\n")
+                f.write(f"Talos Lookup      : { _safe(talos.get('portal_lookup')) }\n")
+                f.write(f"URLScan status    : { _safe(urlscan.get('status'), 'Unavailable (no result)') }\n")
+                f.write(f"URLScan search    : { _safe(urlscan.get('search_url')) } ({_safe(urlscan.get('result_count', 0))} matches)\n")
+                f.write(f"Whitelisted       : { _safe(domain.get('whitelisted', False)) }\n")
+                f.write(f"Blocklisted       : { _safe(domain.get('blocklisted', False)) }\n")
+                f.write(f"Risk Score        : { _safe(domain.get('risk_score', 0)) }\n")
+                for reason in domain.get('reasons', []) or []:
+                    f.write(f"  Reason          : { _safe(reason) }\n")
+
+                for resolved_ip in domain.get('resolved_ip_intelligence', []) or []:
+                    abuse = resolved_ip.get('abuseipdb', {}) or {}
+                    resolved_urlscan = resolved_ip.get('urlscan_search', {}) or {}
+                    f.write(f"  Resolved IP     : { _safe(resolved_ip.get('ip')) }\n")
+                    f.write(f"  IP risk score   : { _safe(resolved_ip.get('risk_score', 0)) }\n")
+                    f.write(f"  IP risk reasons : { '; '.join(resolved_ip.get('reasons', []) or []) or 'No confirmed risk indicators' }\n")
+                    f.write(f"  IP VT Status    : { _safe((resolved_ip.get('virustotal', {}) or {}).get('status')) }\n")
+                    f.write(f"  AbuseIPDB status: { _safe(abuse.get('status'), 'Unavailable (no result)') }\n")
+                    f.write(f"  ASN / Hosting   : { _safe(abuse.get('asn'))} / { _safe(abuse.get('isp')) }\n")
+                    f.write(f"  AbuseIPDB Score : { _safe(abuse.get('abuse_score')) }\n")
+                    f.write(f"  IP Talos        : { _safe((resolved_ip.get('talos', {}) or {}).get('portal_lookup')) }\n")
+                    f.write(f"  IP URLScan state: { _safe(resolved_urlscan.get('status'), 'Unavailable (no result)') }\n")
+                    f.write(f"  IP URLScan      : { _safe(resolved_urlscan.get('search_url'))} ({_safe(resolved_urlscan.get('result_count', 0))} matches)\n")
+
+            for sender_ip in sender_intelligence.get('ips', []) or []:
+                abuse = sender_ip.get('abuseipdb', {}) or {}
+                talos = sender_ip.get('talos', {}) or {}
+                urlscan = sender_ip.get('urlscan_search', {}) or {}
+                f.write(f"\nSender IP         : { _safe(sender_ip.get('ip')) }\n")
+                f.write(f"Source headers    : { ', '.join(sender_ip.get('sources', []) or []) or 'N/A' }\n")
+                f.write(f"VirusTotal        : { _safe((sender_ip.get('virustotal', {}) or {}).get('status')) }\n")
+                f.write(f"VT malicious count: { _safe((sender_ip.get('virustotal', {}) or {}).get('malicious', 0)) }\n")
+                f.write(f"AbuseIPDB status  : { _safe(abuse.get('status'), 'Unavailable (no result)') }\n")
+                f.write(f"AbuseIPDB Score   : { _safe(abuse.get('abuse_score')) }\n")
+                f.write(f"ASN / Hosting     : { _safe(abuse.get('asn'))} / { _safe(abuse.get('isp')) }\n")
+                f.write(f"Talos Lookup      : { _safe(talos.get('portal_lookup')) }\n")
+                f.write(f"URLScan status    : { _safe(urlscan.get('status'), 'Unavailable (no result)') }\n")
+                f.write(f"URLScan search    : { _safe(urlscan.get('search_url'))} ({_safe(urlscan.get('result_count', 0))} matches)\n")
+                f.write(f"Whitelisted       : { _safe(sender_ip.get('whitelisted', False)) }\n")
+                f.write(f"Blocklisted       : { _safe(sender_ip.get('blocklisted', False)) }\n")
+                f.write(f"Risk Score        : { _safe(sender_ip.get('risk_score', 0)) }\n")
             f.write("\n")
 
             # IOC Summary
@@ -377,9 +480,6 @@ class MailReporter:
                     vt_hash = att.get('vt_hash', {}) or {}
                     f.write(f"  VT Score       : { _safe(vt_hash.get('vt_malicious', 'N/A')) }\n")
                     f.write(f"  VT Status      : { _safe(vt_hash.get('vt_status','N/A')) }\n")
-                    anyrun = att.get('anyrun',{}) or {}
-                    if anyrun:
-                        f.write(f"  ANY.RUN Status : { _safe(anyrun.get('status','N/A')) }\n")
                     f.write('-' * 40 + '\n')
             else:
                 f.write('No attachments present.\n')
@@ -432,7 +532,7 @@ class MailReporter:
             sev = (email_data.get('email_severity') or 'Unknown').lower()
             if 'high' in sev or 'malicious' in sev:
                 f.write("- Quarantine the email and block the sender/source immediately.\n")
-                f.write("- Isolate and submit attachments to a sandbox for behavior analysis.\n")
+                f.write("- Review attachment hashes and VirusTotal/Talos results before opening.\n")
                 f.write("- Block and investigate Final IOC URLs; consult URLScan/Talos/VT records.\n")
                 f.write("- Review related accounts and infrastructure for reuse.\n")
             else:

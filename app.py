@@ -1,14 +1,15 @@
 # app.py
+
 import os
 import json
 import re
 # import requests
-# import ipaddress
+import ipaddress
 import ast
 import html
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 from pathlib import Path
 
@@ -16,7 +17,6 @@ import pandas as pd
 import streamlit as st
 from email_analyzer.analyzer import analyze_email, reanalyze_ioc_in_email_data
 from email.utils import parsedate_to_datetime
-from ioc_lib.ioc_analyzer import anyrun_list_analyses
 from email_analyzer.mail_reporter import MailReporter
 from email_analyzer.watcher import run_cycle
 
@@ -49,6 +49,111 @@ for k, v in DEFAULT_SESSION_VALUES.items():
 # -------------------------------------------------------------------
 def safe_report_time() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _sender_provider_url(provider_data, allowed_hosts, *url_keys):
+    """Keep provider buttons limited to known HTTPS destinations."""
+    if not isinstance(provider_data, dict):
+        return ""
+    for key in url_keys:
+        candidate = provider_data.get(key)
+        if not isinstance(candidate, str) or not candidate.strip():
+            continue
+        try:
+            parsed = urlparse(candidate.strip())
+        except ValueError:
+            continue
+        host = (parsed.hostname or "").lower()
+        if (
+            parsed.scheme == "https"
+            and any(host == allowed or host.endswith(f".{allowed}") for allowed in allowed_hosts)
+        ):
+            return candidate.strip()
+    return ""
+
+
+def _sender_lookup_links(value, intelligence, entity_type):
+    """Build safe provider links, using fixed manual lookup URLs as fallbacks."""
+    links = []
+    if entity_type == "domain":
+        if not re.fullmatch(r"(?i)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", str(value or "")):
+            return links
+        encoded_value = quote_plus(str(value))
+        virustotal_url = _sender_provider_url(
+            intelligence.get("virustotal"), ("virustotal.com",), "url", "lookup_url", "portal_lookup", "result_url"
+        ) or f"https://www.virustotal.com/gui/domain/{encoded_value}"
+        whois_url = _sender_provider_url(
+            intelligence.get("whois"), ("whois.com",), "url", "lookup_url", "whois_url", "portal_lookup"
+        ) or f"https://www.whois.com/whois/{encoded_value}"
+        rdap_url = _sender_provider_url(
+            intelligence.get("rdap"), ("icann.org",), "portal_lookup", "url", "lookup_url", "result_url"
+        ) or f"https://lookup.icann.org/en/lookup?name={encoded_value}"
+        icann_url = f"https://lookup.icann.org/en/lookup?name={encoded_value}"
+        extra_link_label = "Open WHOIS"
+        extra_link_host = ("whois.com",)
+        entity_path = "domain"
+    else:
+        try:
+            normalized_ip = str(ipaddress.ip_address(str(value or "").strip()))
+        except ValueError:
+            return links
+        encoded_value = quote_plus(normalized_ip)
+        virustotal_url = _sender_provider_url(
+            intelligence.get("virustotal"), ("virustotal.com",), "url", "lookup_url", "portal_lookup", "result_url"
+        ) or f"https://www.virustotal.com/gui/ip-address/{encoded_value}"
+        whois_url = _sender_provider_url(
+            intelligence.get("abuseipdb"), ("abuseipdb.com",), "url", "lookup_url", "portal_lookup", "report_url"
+        ) or f"https://www.abuseipdb.com/check/{encoded_value}"
+        rdap_url = ""
+        icann_url = ""
+        extra_link_label = "Open AbuseIPDB"
+        extra_link_host = ("abuseipdb.com",)
+        entity_path = "ip"
+
+    links.extend([
+        ("Open VirusTotal", virustotal_url, ("virustotal.com",)),
+        ("Open Talos", _sender_provider_url(
+            intelligence.get("talos"), ("talosintelligence.com",), "portal_lookup", "url", "lookup_url"
+        ) or f"https://talosintelligence.com/reputation_center/lookup?search={encoded_value}",
+         ("talosintelligence.com",)),
+        ("Open URLScan", _sender_provider_url(
+            intelligence.get("urlscan_search"), ("urlscan.io",), "search_url", "url", "lookup_url"
+        ) or f"https://urlscan.io/search/#{entity_path}:{encoded_value}",
+         ("urlscan.io",)),
+    ])
+    if rdap_url:
+        links.append(("Open RDAP", rdap_url, ("icann.org",)))
+    if whois_url:
+        links.append((extra_link_label, whois_url, extra_link_host))
+    if icann_url:
+        links.append(("Open ICANN", icann_url, ("icann.org",)))
+
+    # Existing URLScan matches can link directly to their individual result pages.
+    urlscan = intelligence.get("urlscan_search", {}) or {}
+    if isinstance(urlscan, dict):
+        for result_index, result in enumerate(urlscan.get("results", []) or [], start=1):
+            if isinstance(result, dict):
+                result_url = _sender_provider_url(
+                    result, ("urlscan.io",), "result_url", "url", "lookup_url"
+                )
+                if result_url:
+                    links.append((f"Open URLScan result {result_index}", result_url, ("urlscan.io",)))
+
+    return [
+        (label, url)
+        for label, url, allowed_hosts in links
+        if _sender_provider_url({"url": url}, allowed_hosts, "url")
+    ]
+
+
+def _show_sender_link_buttons(links, key_prefix):
+    """Render only links that passed provider-host validation."""
+    if not links:
+        return
+    columns = st.columns(min(len(links), 4))
+    for index, (label, url) in enumerate(links):
+        with columns[index % len(columns)]:
+            st.link_button(label, url, key=f"sender-link-{key_prefix}-{index}")
 
 
 def read_file_bytes(path: str) -> bytes:
@@ -382,7 +487,6 @@ def analyze_inbox_for_date(target_date: datetime) -> int:
 # Data Builders
 # -------------------------------------------------------------------
 PROVIDER_MANUAL_URLS = {
-    "anyrun": "https://any.run/",
     "urlscan": "https://urlscan.io/",
     "talos": "https://talosintelligence.com/",
     "rdap": "https://rdap.org/",
@@ -410,9 +514,7 @@ def resolve_provider_link(provider_name: str, provider_data: dict) -> tuple[str,
         return "", ""
 
     provider_name = str(provider_name or "").strip().lower()
-    if provider_name == "anyrun":
-        url = provider_data.get("url", "") or provider_data.get("result", "")
-    elif provider_name == "urlscan":
+    if provider_name == "urlscan":
         url = provider_data.get("result_url", "") or provider_data.get("result", "") or provider_data.get("url", "")
     elif provider_name in {"talos", "rdap", "abuseipdb"}:
         if isinstance(provider_data, dict):
@@ -448,9 +550,8 @@ def render_ioc_html_table(df: pd.DataFrame) -> str:
         cells = []
         for col in df.columns:
             value = row[col]
-            if col in {"ANY.RUN URL", "URLScan Result", "Talos Lookup", "RDAP Lookup"} and value:
+            if col in {"URLScan Result", "Talos Lookup", "RDAP Lookup"} and value:
                 button_label = {
-                    "ANY.RUN URL": "ANY.RUN",
                     "URLScan Result": "URLScan",
                     "Talos Lookup": "Talos",
                     "RDAP Lookup": "RDAP",
@@ -479,7 +580,6 @@ def build_ioc_df(email_data: dict) -> pd.DataFrame:
         provider = item.get("provider_context", {}) or {}
         whois = provider.get("whois", {}) or {}
         abuseipdb = provider.get("abuseipdb", {}) or {}
-        anyrun = provider.get("anyrun", {}) or {}
         talos = provider.get("talos", {}) or {}
         rdap = provider.get("rdap", {}) or {}
         urlscan = provider.get("urlscan", {}) or {}
@@ -487,7 +587,6 @@ def build_ioc_df(email_data: dict) -> pd.DataFrame:
         talos_lookup = talos.get("portal_lookup") if isinstance(talos, dict) else str(talos)
         rdap_lookup = rdap.get("portal_lookup") if isinstance(rdap, dict) else str(rdap)
         urlscan_result = urlscan.get("result_url", "") or urlscan.get("result", "") or urlscan.get("url", "")
-        anyrun_url, anyrun_note = resolve_provider_link("anyrun", anyrun)
         talos_url, talos_note = resolve_provider_link("talos", talos)
         rdap_url, rdap_note = resolve_provider_link("rdap", rdap)
         urlscan_url, urlscan_note = resolve_provider_link("urlscan", urlscan)
@@ -498,9 +597,6 @@ def build_ioc_df(email_data: dict) -> pd.DataFrame:
             "VT Score": item.get("vt_malicious", 0),
             "Verdict": item.get("category", ""),
             "AbuseIPDB Score": abuseipdb.get("abuse_score", ""),
-            "ANY.RUN Status": anyrun.get("status", ""),
-            "ANY.RUN URL": anyrun_url,
-            "ANY.RUN Note": anyrun_note,
             "URLScan Result": urlscan_url,
             "URLScan Note": urlscan_note,
             "WHOIS Age (days)": whois.get("age_days", ""),
@@ -540,7 +636,6 @@ def build_attachment_df(email_data: dict) -> pd.DataFrame:
     for att in email_data.get("attachments", []) or []:
         vt_hash = att.get("vt_hash", {}) or {}
         vt_upload = att.get("vt_upload", {}) or {}
-        anyrun = att.get("anyrun", {}) or {}
         talos = att.get("talos", {}) or {}
         rows.append({
             "Filename": att.get("filename", ""),
@@ -549,8 +644,6 @@ def build_attachment_df(email_data: dict) -> pd.DataFrame:
             "VT Hash Score": vt_hash.get("vt_malicious", 0),
             "VT Status": vt_hash.get("vt_status", ""),
             "VT Upload": vt_upload.get("status", ""),
-            "ANY.RUN Status": anyrun.get("status", ""),
-            #"ANY.RUN Analysis ID": anyrun.get("analysis_id", ""),
             "Talos Lookup": talos.get("portal_lookup", "") if isinstance(talos, dict) else "",
         })
     return pd.DataFrame(rows)
@@ -613,16 +706,6 @@ def build_ioc_osint_df(email_data: dict) -> pd.DataFrame:
                 "Source": "URLScan",
                 "Key Info": f"Status: {urlscan.get('status', 'N/A')}",
                 "Details": f"Result: {urlscan.get('result', '') or urlscan.get('url', '')}"
-            })
-
-        if provider.get("anyrun"):
-            anyrun = provider.get("anyrun", {}) or {}
-            rows.append({
-                "IOC": value,
-                "Type": ioc_type,
-                "Source": "ANY.RUN",
-                "Key Info": f"Status: {anyrun.get('status', 'N/A')}",
-                "Details": f"Analysis ID: {anyrun.get('analysis_id', 'N/A')} | URL: {anyrun.get('url', '')}"
             })
 
         if provider.get("talos"):
@@ -936,15 +1019,6 @@ def build_osint_df(provider: dict) -> pd.DataFrame:
             "Details": str(urlscan)
         })
 
-    # ANY.RUN
-    if provider.get("anyrun"):
-        anyrun = provider["anyrun"] or {}
-        rows.append({
-            "Source": "ANY.RUN",
-            "Key Info": f"Status: {anyrun.get('status', 'N/A')}",
-            "Details": str(anyrun)
-        })
-
     # Talos
     if provider.get("talos"):
         talos_data = provider["talos"]
@@ -1041,7 +1115,7 @@ def show_ioc_detail(email_data: dict, selected_value: str):
         for reason in reasons:
             st.write(f"- {reason}")
 
-    with st.expander("🌐 WHOIS / RDAP / Talos / Sandbox / Reputation", expanded=True):
+    with st.expander("🌐 WHOIS / RDAP / Talos / Reputation", expanded=True):
         osint_df = build_osint_df(provider)
         if not osint_df.empty:
             st.dataframe(osint_df, use_container_width=True, hide_index=True)
@@ -1050,20 +1124,15 @@ def show_ioc_detail(email_data: dict, selected_value: str):
 
         # External links
         st.markdown("### 🔗 External Links")
-        cols = st.columns(4)
+        cols = st.columns(3)
 
         talos_url = ""
         rdap_url = ""
         urlscan_url = ""
-        anyrun_url = ""
         talos_note = ""
         rdap_note = ""
         urlscan_note = ""
-        anyrun_note = ""
 
-        if provider.get("anyrun"):
-            anyrun_data = provider["anyrun"] or {}
-            anyrun_url, anyrun_note = resolve_provider_link("anyrun", anyrun_data)
         if provider.get("talos"):
             talos_data = provider["talos"] or {}
             talos_url, talos_note = resolve_provider_link("talos", talos_data)
@@ -1089,13 +1158,6 @@ def show_ioc_detail(email_data: dict, selected_value: str):
                 st.link_button("Open URLScan", urlscan_url)
             if urlscan_note:
                 st.caption(urlscan_note)
-        with cols[3]:
-            if anyrun_url:
-                st.link_button("Open ANY.RUN", anyrun_url)
-            if anyrun_note:
-                st.caption(anyrun_note)
-
-
 # -------------------------------------------------------------------
 # Sidebar Controls
 # -------------------------------------------------------------------
@@ -1104,6 +1166,13 @@ with st.sidebar:
     uploaded = st.file_uploader("Upload .eml file", type=["eml"])
     st.checkbox("Show only Malicious IOC", key="show_only_malicious", value=False)
     run_analysis = st.button("▶ Run Analysis", type="primary")
+    # Reanalysis is available only after an EML file has been saved for analysis.
+    uploaded_eml_path = st.session_state.get("uploaded_eml_path")
+    reanalyze_whole_email = st.button(
+        "🔄 Reanalyze Whole Email",
+        key="reanalyze_whole_email",
+        disabled=not uploaded_eml_path or not os.path.isfile(uploaded_eml_path),
+    )
     load_latest = st.button("📂 Load latest report from reports")
 
     st.markdown("---")
@@ -1145,6 +1214,28 @@ if uploaded is not None and run_analysis:
 
     st.success("Analysis complete.")
     progress_bar.empty()
+
+if reanalyze_whole_email:
+    # Reuse the saved EML and existing analysis flow to refresh all results and reports.
+    eml_path = st.session_state.get("uploaded_eml_path")
+    if not eml_path or not os.path.isfile(eml_path):
+        st.error("The uploaded EML file is no longer available. Upload it again to reanalyze.")
+    else:
+        progress_bar = st.progress(0)
+        try:
+            with st.spinner("Reanalyzing the whole email..."):
+                progress_bar.progress(10)
+                email_data = run_analysis_on_path(eml_path, force_reanalyze=True)
+                progress_bar.progress(100)
+
+            if email_data:
+                st.success("Whole-email reanalysis complete. Analysis data and TXT/JSON reports were refreshed.")
+            else:
+                st.error("Whole-email reanalysis failed or the EML could not be parsed.")
+        except Exception as exc:
+            st.error(f"Whole-email reanalysis failed: {exc}")
+        finally:
+            progress_bar.empty()
 
 if load_latest:
     path = get_latest_report_path()
@@ -1322,7 +1413,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
         display_columns = [
             "Type", "Value", "VT Score", "Verdict",
             "AbuseIPDB Score",
-            "ANY.RUN Status", "ANY.RUN URL", "URLScan Result",
+            "URLScan Result",
             "WHOIS Age (days)", "Registrar", "Talos Lookup", "RDAP Lookup",
             "Whitelisted", "Blocklisted"
         ]
@@ -1372,32 +1463,18 @@ if st.session_state.analysis_done and st.session_state.email_data:
         st.dataframe(att_df, use_container_width=True, hide_index=True)
 
         if email_data.get("attachments"):
-            st.markdown("### Attachment Sandbox Details")
+            st.markdown("### Attachment Details")
             for att in email_data.get("attachments", []) or []:
                 with st.expander(f"{att.get('filename', 'unknown')} ({att.get('sha256', '')})", expanded=False):
                     st.write(f"**Size:** {att.get('size', 0)} bytes")
                     vt_hash = att.get("vt_hash", {}) or {}
                     vt_upload = att.get("vt_upload", {}) or {}
-                    anyrun = att.get("anyrun", {}) or {}
-                    anyrun_report = att.get("anyrun_report", {}) or {}
                     talos = att.get("talos", {}) or {}
 
                     st.write(f"**SHA256:** {att.get('sha256', '')}")
                     st.write(f"**VT Hash Score:** {vt_hash.get('vt_malicious', 0)}")
                     st.write(f"**VT Status:** {vt_hash.get('vt_status', 'N/A')}")
                     st.write(f"**VT Upload Status:** {vt_upload.get('status', 'N/A')}")
-
-                    st.write(f"**ANY.RUN Status:** {anyrun.get('status', 'N/A')}")
-                    anyrun_link, anyrun_note = resolve_provider_link("anyrun", anyrun)
-                    if anyrun_link:
-                        st.markdown(
-                            f"<a href=\"{anyrun_link}\" target=\"_blank\"><button style=\"padding:8px 14px; border:none; background-color:#0078d4; color:white; border-radius:4px; cursor:pointer;\">Open ANY.RUN</button></a>",
-                            unsafe_allow_html=True,
-                        )
-                    if anyrun_note:
-                        st.caption(anyrun_note)
-                    if anyrun.get("url"):
-                        st.markdown(f"**ANY.RUN URL:** [{anyrun.get('url')}]({anyrun.get('url')})")
 
                     talos_link, talos_note = resolve_provider_link("talos", talos)
                     if talos_link:
@@ -1407,10 +1484,6 @@ if st.session_state.analysis_done and st.session_state.email_data:
                         )
                     if talos_note:
                         st.caption(talos_note)
-
-                    if anyrun_report:
-                        st.markdown("#### ANY.RUN Retrieved Report")
-                        st.json(anyrun_report)
 
 # Whitelist / Blocklist
     with tab_lists:
@@ -1456,6 +1529,191 @@ if st.session_state.analysis_done and st.session_state.email_data:
     with tab_summary:
         st.subheader("🧠 Threat Summary")
 
+        sender_intelligence = email_data.get("sender_intelligence", {}) or {}
+        st.markdown("### Sender Intelligence")
+        risk_col, verdict_col = st.columns(2)
+        risk_col.metric("Sender Risk Score", sender_intelligence.get("risk_score", 0))
+        verdict_col.metric("Sender Verdict", sender_intelligence.get("verdict", "Needs Review"))
+        authentication = sender_intelligence.get("authentication", {}) or {}
+        auth_text = str(email_data.get("auth_results", "") or "")
+        dkim_match = re.search(r"\bdkim\s*=\s*([a-z]+)", auth_text, re.IGNORECASE)
+        dkim_status = dkim_match.group(1).lower() if dkim_match else "unknown"
+        st.write(
+            f"SPF authentication: {authentication.get('spf', 'unknown')} | "
+            f"DKIM authentication: {dkim_status} | "
+            f"DMARC authentication: {authentication.get('dmarc', 'unknown')}"
+        )
+        for reason in sender_intelligence.get("reasons", []) or []:
+            st.write(f"- {reason}")
+
+        domain_rows = []
+        for domain in sender_intelligence.get("domains", []) or []:
+            dns = domain.get("dns", {}) or {}
+            whois = domain.get("whois", {}) or {}
+            talos = domain.get("talos", {}) or {}
+            rdap = domain.get("rdap", {}) or {}
+            urlscan = domain.get("urlscan_search", {}) or {}
+            resolved_intel = domain.get("resolved_ip_intelligence", []) or []
+            domain_rows.append({
+                "Header(s)": ", ".join(domain.get("headers", []) or []),
+                "Domain": domain.get("domain", ""),
+                "Age (days)": domain.get("domain_age_days"),
+                "WHOIS status": whois.get("status", "No result"),
+                "Registrar": whois.get("registrar") or f"Unavailable ({whois.get('status', 'not provided')})",
+                "RDAP status": rdap.get("status", "Lookup available" if rdap.get("portal_lookup") else "N/A"),
+                "SPF": ", ".join(domain.get("spf_records", []) or []),
+                "SPF status": domain.get("spf_status", "not checked"),
+                "DMARC": ", ".join(domain.get("dmarc_records", []) or []),
+                "DMARC status": domain.get("dmarc_status", "not checked"),
+                "DNS TXT": ", ".join((dns.get("txt", {}) or {}).get("records", []) or []),
+                "DNS TXT status": (dns.get("txt", {}) or {}).get("status", "not checked"),
+                "Resolved IPs": ", ".join(domain.get("resolved_ips", []) or []),
+                "Resolved ASN / Hosting": "; ".join(
+                    f"{(item.get('abuseipdb', {}) or {}).get('asn', '')} / "
+                    f"{(item.get('abuseipdb', {}) or {}).get('isp', '')}"
+                    for item in resolved_intel
+                ),
+                "Resolved IP URLScan matches": ", ".join(
+                    str((item.get("urlscan_search", {}) or {}).get("result_count", 0))
+                    for item in resolved_intel
+                ),
+                "MX": ", ".join((dns.get("mx", {}) or {}).get("records", []) or []),
+                "VT": (domain.get("virustotal", {}) or {}).get("status", ""),
+                "Risk score": domain.get("risk_score", 0),
+                "Risk reasons": "; ".join(domain.get("reasons", []) or []),
+                "Talos status": talos.get("status", "Lookup available" if talos.get("portal_lookup") else "N/A"),
+                "URLScan matches": urlscan.get("result_count", 0),
+                "URLScan status": urlscan.get("status", "N/A"),
+                "Whitelisted": domain.get("whitelisted", False),
+                "Blocklisted": domain.get("blocklisted", False),
+            })
+        if domain_rows:
+            st.dataframe(pd.DataFrame(domain_rows), use_container_width=True, hide_index=True)
+
+        for domain_index, domain in enumerate(sender_intelligence.get("domains", []) or []):
+            domain_name = domain.get("domain", "")
+            dns = domain.get("dns", {}) or {}
+            whois = domain.get("whois", {}) or {}
+            talos = domain.get("talos", {}) or {}
+            urlscan = domain.get("urlscan_search", {}) or {}
+            with st.expander(f"Domain details: {domain_name or 'unknown'}"):
+                st.write(f"Header role(s): {', '.join(domain.get('headers', []) or []) or 'N/A'}")
+                st.write(f"Address(es): {domain.get('addresses', {}) or 'N/A'}")
+                st.write(
+                    f"WHOIS status: {whois.get('status', 'N/A')} | "
+                    f"Registrar: {whois.get('registrar') or 'N/A'} | "
+                    f"Age: {domain.get('domain_age_days') if domain.get('domain_age_days') is not None else 'N/A'} days"
+                )
+                st.write(
+                    f"Created: {whois.get('created') or 'N/A'} | "
+                    f"Expires: {whois.get('expires') or 'N/A'} | "
+                    f"Nameservers: {', '.join(whois.get('nameservers', []) or []) or 'N/A'}"
+                )
+                st.write(f"SPF ({domain.get('spf_status', 'unknown')}): {', '.join(domain.get('spf_records', []) or []) or 'N/A'}")
+                st.write(f"DMARC DNS ({domain.get('dmarc_status', 'unknown')}): {', '.join(domain.get('dmarc_records', []) or []) or 'N/A'}")
+                st.write(
+                    "DNS: "
+                    f"A={', '.join((dns.get('a', {}) or {}).get('records', []) or []) or 'N/A'}; "
+                    f"AAAA={', '.join((dns.get('aaaa', {}) or {}).get('records', []) or []) or 'N/A'}; "
+                    f"MX={', '.join((dns.get('mx', {}) or {}).get('records', []) or []) or 'N/A'}; "
+                    f"TXT={', '.join((dns.get('txt', {}) or {}).get('records', []) or []) or 'N/A'}"
+                )
+                st.write(
+                    f"VirusTotal: {(domain.get('virustotal', {}) or {}).get('status', 'N/A')} "
+                    f"({(domain.get('virustotal', {}) or {}).get('malicious', 'N/A')} malicious)"
+                )
+                st.write(
+                    f"Talos: {talos.get('status', 'Lookup available' if talos.get('portal_lookup') else 'N/A')} | "
+                    f"URLScan: {urlscan.get('status', 'N/A')} "
+                    f"({urlscan.get('result_count', 0)} matches)"
+                )
+                st.write(f"Risk score: {domain.get('risk_score', 0)}")
+                for reason in domain.get("reasons", []) or []:
+                    st.write(f"- {reason}")
+
+                _show_sender_link_buttons(
+                    _sender_lookup_links(domain_name, domain, "domain"),
+                    f"domain-{domain_index}",
+                )
+
+                for resolved_index, resolved_ip in enumerate(domain.get("resolved_ip_intelligence", []) or []):
+                    abuse = resolved_ip.get("abuseipdb", {}) or {}
+                    with st.container(border=True):
+                        st.write(f"Resolved IP: {resolved_ip.get('ip', 'N/A')}")
+                        st.write(
+                            f"VirusTotal: {(resolved_ip.get('virustotal', {}) or {}).get('status', 'N/A')} | "
+                            f"AbuseIPDB: {abuse.get('status', 'N/A')} "
+                            f"(score {abuse.get('abuse_score', 'N/A')}) | "
+                            f"ASN: {abuse.get('asn', 'N/A')} | Hosting / ISP: {abuse.get('isp', 'N/A')}"
+                        )
+                        resolved_urlscan = resolved_ip.get("urlscan_search", {}) or {}
+                        resolved_talos = resolved_ip.get("talos", {}) or {}
+                        st.write(
+                            f"Talos: {resolved_talos.get('status', 'Lookup available' if resolved_talos.get('portal_lookup') else 'N/A')} | "
+                            f"URLScan: {resolved_urlscan.get('status', 'N/A')} "
+                            f"({resolved_urlscan.get('result_count', 0)} matches)"
+                        )
+                        st.write(f"Risk score: {resolved_ip.get('risk_score', 0)}")
+                        for reason in resolved_ip.get("reasons", []) or []:
+                            st.write(f"- {reason}")
+                        _show_sender_link_buttons(
+                            _sender_lookup_links(resolved_ip.get("ip", ""), resolved_ip, "ip"),
+                            f"resolved-{domain_index}-{resolved_index}",
+                        )
+
+        ip_rows = []
+        for sender_ip in sender_intelligence.get("ips", []) or []:
+            abuse = sender_ip.get("abuseipdb", {}) or {}
+            talos = sender_ip.get("talos", {}) or {}
+            urlscan = sender_ip.get("urlscan_search", {}) or {}
+            ip_rows.append({
+                "Sender IP": sender_ip.get("ip", ""),
+                "Source header(s)": ", ".join(sender_ip.get("sources", []) or []),
+                "VT": (sender_ip.get("virustotal", {}) or {}).get("status", ""),
+                "AbuseIPDB": abuse.get("abuse_score", ""),
+                "AbuseIPDB status": abuse.get("status", "No result"),
+                "ASN": abuse.get("asn", ""),
+                "Hosting / ISP": abuse.get("isp", ""),
+                "Risk score": sender_ip.get("risk_score", 0),
+                "Risk reasons": "; ".join(sender_ip.get("reasons", []) or []),
+                "Talos status": talos.get("status", "Lookup available" if talos.get("portal_lookup") else "N/A"),
+                "URLScan matches": urlscan.get("result_count", 0),
+                "URLScan status": urlscan.get("status", "N/A"),
+                "Whitelisted": sender_ip.get("whitelisted", False),
+                "Blocklisted": sender_ip.get("blocklisted", False),
+            })
+        if ip_rows:
+            st.dataframe(pd.DataFrame(ip_rows), use_container_width=True, hide_index=True)
+            for sender_index, sender_ip in enumerate(sender_intelligence.get("ips", []) or []):
+                with st.expander(f"IP details: {sender_ip.get('ip', 'unknown')}"):
+                    abuse = sender_ip.get("abuseipdb", {}) or {}
+                    talos = sender_ip.get("talos", {}) or {}
+                    urlscan = sender_ip.get("urlscan_search", {}) or {}
+                    st.write(f"Source header(s): {', '.join(sender_ip.get('sources', []) or []) or 'N/A'}")
+                    st.write(
+                        f"VirusTotal: {(sender_ip.get('virustotal', {}) or {}).get('status', 'N/A')} "
+                        f"({(sender_ip.get('virustotal', {}) or {}).get('malicious', 'N/A')} malicious)"
+                    )
+                    st.write(
+                        f"AbuseIPDB: {abuse.get('status', 'N/A')} "
+                        f"(score {abuse.get('abuse_score', 'N/A')}) | "
+                        f"ASN: {abuse.get('asn', 'N/A')} | Hosting / ISP: {abuse.get('isp', 'N/A')}"
+                    )
+                    st.write(
+                        f"Talos: {talos.get('status', 'Lookup available' if talos.get('portal_lookup') else 'N/A')} | "
+                        f"URLScan: {urlscan.get('status', 'N/A')} "
+                        f"({urlscan.get('result_count', 0)} matches)"
+                    )
+                    st.write(f"Risk score: {sender_ip.get('risk_score', 0)}")
+                    for reason in sender_ip.get("reasons", []) or []:
+                        st.write(f"- {reason}")
+                    _show_sender_link_buttons(
+                        _sender_lookup_links(sender_ip.get("ip", ""), sender_ip, "ip"),
+                        f"ip-{sender_index}",
+                    )
+        if not domain_rows and not ip_rows:
+            st.info("No sender domains or IP addresses were available for enrichment.")
+
         st.markdown("### IOC Observed")
         observed_df = build_ioc_observed_df(email_data)
         st.dataframe(observed_df, use_container_width=True, hide_index=True)
@@ -1480,7 +1738,6 @@ if st.session_state.analysis_done and st.session_state.email_data:
         osint_summary = email_data.get("osint_summary", {}) or {}
         st.write(f"Providers Seen: {', '.join(osint_summary.get('providers_seen', []) or []) or 'None'}")
         st.write(f"AbuseIPDB Hits: {osint_summary.get('abuseipdb_hits', 0)}")
-        st.write(f"ANY.RUN Submissions: {osint_summary.get('anyrun_submissions', 0)}")
         st.write(f"URLScan Hits: {osint_summary.get('urlscan_hits', 0)}")
 
         st.markdown("### 🚨 Alert Summary")
@@ -1638,7 +1895,6 @@ if st.session_state.analysis_done and st.session_state.email_data:
             st.checkbox("Block Domain")
             st.checkbox("Block URL")
             st.checkbox("Block Sender")
-            st.checkbox("Submit to Sandbox")
             st.checkbox("Escalate to Tire 2")
             st.checkbox("Search Similar Emails")
 
@@ -1691,5 +1947,3 @@ elif uploaded is not None and not run_analysis:
     st.info("Upload complete. Click **Run Analysis** in the sidebar to start.")
 else:
     st.info("Upload an .eml file from the sidebar and click **Run Analysis**.")
-
-
