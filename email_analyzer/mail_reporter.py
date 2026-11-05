@@ -7,6 +7,14 @@ import re
 import datetime as dt
 
 from typing import Dict, Any
+from urllib.parse import quote_plus, urlparse
+
+from docx import Document
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches, Pt, RGBColor
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +122,11 @@ class MailReporter:
         """
         Normalize provider context before writing reports.
         """
-        provider_context = dict(provider_context or {})
+        provider_context = {
+            key: value
+            for key, value in dict(provider_context or {}).items()
+            if key in {"urlscan", "abuseipdb", "talos", "rdap", "whois", "hosting", "hosting_provider"}
+        }
 
         urlscan = dict(provider_context.get("urlscan", {}) or {})
         if urlscan:
@@ -137,11 +149,11 @@ class MailReporter:
             safe_item["provider_context"] = self._normalize_provider_context(
                 safe_item.get("provider_context", {}) or {}
             )
-            safe_item.pop("final_score", None)
             safe_ioc_scoring.append(safe_item)
 
         report = {
             "timestamp": dt.datetime.now().isoformat(),
+            "input_path": email_data.get("input_path"),
             "email_metadata": {
                 "subject": email_data.get("subject"),
                 "from": email_data.get("from"),
@@ -153,7 +165,9 @@ class MailReporter:
             "headers_raw": email_data.get("headers_raw", {}),
             "received_hops": email_data.get("received_hops", []),
             "auth_results": email_data.get("auth_results"),
+            "subject_analysis": email_data.get("subject_analysis", {}),
             "sender_intelligence": email_data.get("sender_intelligence", {}),
+            "sender_domains": email_data.get("sender_domains", []),
             "body_stats": email_data.get("body_stats", {}),
             "urls_extracted": email_data.get("urls_extracted", []),
             "urls_extracted_detail": email_data.get("urls_extracted_detail", []),
@@ -161,9 +175,17 @@ class MailReporter:
             "attachments": email_data.get("attachments", []),
             "ioc_scoring": safe_ioc_scoring,
             "osint_summary": email_data.get("osint_summary", {}),
+            "campaign": email_data.get("campaign", {}),
+            "alert": email_data.get("alert", {}),
+            "email_score": email_data.get("email_score"),
+            "email_severity": email_data.get("email_severity"),
+            "email_score_reasons": email_data.get("email_score_reasons", []),
+            "defanged_iocs_text": email_data.get("defanged_iocs_text", ""),
             "analyst_comment": email_data.get("analyst_comment", ""), # Analyst-written investigation notes from UI
             "response_actions": email_data.get("response_actions", {}),
             "investigation_submitted": email_data.get("investigation_submitted", False),
+            "submitted_time": email_data.get("submitted_time")
+            or (email_data.get("response_actions", {}) or {}).get("submitted_time"),
         }
 
         with open(report_path, "w", encoding="utf-8") as f:
@@ -571,6 +593,571 @@ class MailReporter:
                 f.write("- If uncertain, submit key IOCs to OSINT providers for enrichment.\n")
 
         logger.info("TXT report generated: %s", report_path)
+        return report_path
+
+    def generate_word_report(self, email_data: Dict[str, Any]) -> str:
+        """Create a professional DOCX report from the saved analysis only."""
+        timestamp = dt.datetime.now().astimezone()
+        report_path = os.path.join(
+            self.output_dir,
+            f"email_analysis_{timestamp.strftime('%Y%m%d_%H%M%S')}.docx",
+        )
+        document = Document()
+        section = document.sections[0]
+        section.top_margin = Inches(0.65)
+        section.bottom_margin = Inches(0.65)
+        section.left_margin = Inches(0.7)
+        section.right_margin = Inches(0.7)
+
+        styles = document.styles
+        styles["Normal"].font.name = "Aptos"
+        styles["Normal"].font.size = Pt(9)
+        styles["Title"].font.name = "Aptos Display"
+        styles["Title"].font.size = Pt(23)
+        styles["Heading 1"].font.name = "Aptos Display"
+        styles["Heading 1"].font.size = Pt(16)
+        styles["Heading 1"].font.color.rgb = RGBColor(31, 78, 121)
+        styles["Heading 2"].font.name = "Aptos"
+        styles["Heading 2"].font.size = Pt(12)
+        styles["Heading 2"].font.color.rgb = RGBColor(47, 84, 150)
+
+        header = section.header.paragraphs[0]
+        header.text = "SOC EMAIL INVESTIGATION REPORT"
+        header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        for run in header.runs:
+            run.font.size = Pt(8)
+            run.font.color.rgb = RGBColor(100, 100, 100)
+
+        footer = section.footer.paragraphs[0]
+        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        footer.add_run(f"Generated {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}  |  ")
+        page_field = OxmlElement("w:fldSimple")
+        page_field.set(qn("w:instr"), "PAGE")
+        footer._p.append(page_field)
+        for run in footer.runs:
+            run.font.size = Pt(8)
+            run.font.color.rgb = RGBColor(100, 100, 100)
+
+        def display(value: Any) -> str:
+            if value is None or value == "":
+                return "N/A"
+            if isinstance(value, bool):
+                return "Yes" if value else "No"
+            if isinstance(value, (dict, list, tuple)):
+                return json.dumps(value, ensure_ascii=False, default=str)
+            return str(value)
+
+        def wrap_long_text(value: Any) -> str:
+            # Zero-width spaces let Word wrap long URLs without changing their visible text.
+            text = display(value)
+            return re.sub(r"(?<=[/?.&=_-])", "\u200b", text)
+
+        def add_hyperlink(paragraph, label: str, url: str) -> None:
+            try:
+                parsed = urlparse(str(url))
+            except ValueError:
+                paragraph.add_run(label)
+                return
+            if parsed.scheme != "https" or not parsed.hostname:
+                paragraph.add_run(label)
+                return
+            relationship_id = paragraph.part.relate_to(
+                url,
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+                is_external=True,
+            )
+            hyperlink = OxmlElement("w:hyperlink")
+            hyperlink.set(qn("r:id"), relationship_id)
+            run = OxmlElement("w:r")
+            properties = OxmlElement("w:rPr")
+            color = OxmlElement("w:color")
+            color.set(qn("w:val"), "0563C1")
+            properties.append(color)
+            underline = OxmlElement("w:u")
+            underline.set(qn("w:val"), "single")
+            properties.append(underline)
+            run.append(properties)
+            text = OxmlElement("w:t")
+            text.text = label
+            run.append(text)
+            hyperlink.append(run)
+            paragraph._p.append(hyperlink)
+
+        def shade_cell(cell, fill: str) -> None:
+            properties = cell._tc.get_or_add_tcPr()
+            shading = OxmlElement("w:shd")
+            shading.set(qn("w:fill"), fill)
+            properties.append(shading)
+
+        def add_table(title: str, columns: list, rows: list) -> None:
+            if title:
+                document.add_heading(title, level=2)
+            table = document.add_table(rows=1, cols=len(columns))
+            table.style = "Table Grid"
+            table.autofit = True
+            for index, name in enumerate(columns):
+                cell = table.rows[0].cells[index]
+                cell.text = str(name)
+                shade_cell(cell, "1F4E79")
+                for run in cell.paragraphs[0].runs:
+                    run.font.bold = True
+                    run.font.color.rgb = RGBColor(255, 255, 255)
+                    run.font.size = Pt(8)
+            for row_data in rows or [["N/A"] + [""] * (len(columns) - 1)]:
+                row = table.add_row()
+                for index, value in enumerate(row_data):
+                    cell = row.cells[index]
+                    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+                    cell.text = ""
+                    paragraph = cell.paragraphs[0]
+                    if isinstance(value, dict) and value.get("url"):
+                        add_hyperlink(paragraph, str(value.get("label") or "Open provider"), value["url"])
+                    else:
+                        paragraph.add_run(wrap_long_text(value))
+                    for run in paragraph.runs:
+                        run.font.size = Pt(8)
+                    column_name = str(columns[index]).lower()
+                    if columns and str(columns[0]).lower() in {"field", "metric"} and row_data:
+                        column_name += " " + str(row_data[0]).lower()
+                    lower_value = display(value).lower()
+                    if "severity" in column_name or "verdict" in column_name:
+                        if any(term in lower_value for term in ("critical", "high", "malicious", "phishing")):
+                            for run in paragraph.runs:
+                                run.font.color.rgb = RGBColor(192, 0, 0)
+                                run.font.bold = True
+                        elif any(term in lower_value for term in ("medium", "suspicious")):
+                            for run in paragraph.runs:
+                                run.font.color.rgb = RGBColor(191, 110, 0)
+                                run.font.bold = True
+                        elif any(term in lower_value for term in ("low", "benign", "clean", "no threat")):
+                            for run in paragraph.runs:
+                                run.font.color.rgb = RGBColor(0, 128, 0)
+                                run.font.bold = True
+            document.add_paragraph()
+
+        def add_key_values(title: str, values: Dict[str, Any]) -> None:
+            rows = [[key, display(value)] for key, value in values.items()]
+            add_table(title, ["Field", "Details"], rows)
+
+        def flatten_values(value: Any, prefix: str = "") -> list:
+            result = []
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    result.extend(flatten_values(child, f"{prefix}.{key}" if prefix else str(key)))
+            elif isinstance(value, list):
+                if value:
+                    for index, child in enumerate(value, start=1):
+                        result.extend(flatten_values(child, f"{prefix}[{index}]"))
+                else:
+                    result.append([prefix or "Details", "N/A"])
+            else:
+                result.append([prefix or "Details", display(value)])
+            return result
+
+        def provider_link_rows(entity_type: str, value: str, intelligence: Dict[str, Any]) -> list:
+            if not value:
+                return []
+            if entity_type == "domain":
+                encoded = quote_plus(value)
+                candidates = [
+                    ("VirusTotal", (intelligence.get("virustotal") or {}).get("url"),
+                     f"https://www.virustotal.com/gui/domain/{encoded}"),
+                    ("Talos", (intelligence.get("talos") or {}).get("portal_lookup"),
+                     f"https://talosintelligence.com/reputation_center/lookup?search={encoded}"),
+                    ("URLScan", (intelligence.get("urlscan_search") or {}).get("search_url"),
+                     f"https://urlscan.io/search/#domain:{encoded}"),
+                    ("RDAP / ICANN", (intelligence.get("rdap") or {}).get("portal_lookup"),
+                     f"https://lookup.icann.org/en/lookup?name={encoded}"),
+                    ("WHOIS", (intelligence.get("whois") or {}).get("url"),
+                     f"https://www.whois.com/whois/{encoded}"),
+                ]
+            elif entity_type == "ip":
+                encoded = quote_plus(value)
+                candidates = [
+                    ("VirusTotal", (intelligence.get("virustotal") or {}).get("url"),
+                     f"https://www.virustotal.com/gui/ip-address/{encoded}"),
+                    ("Talos", (intelligence.get("talos") or {}).get("portal_lookup"),
+                     f"https://talosintelligence.com/reputation_center/lookup?search={encoded}"),
+                    ("URLScan", (intelligence.get("urlscan_search") or {}).get("search_url"),
+                     f"https://urlscan.io/search/#ip:{encoded}"),
+                    ("AbuseIPDB", (intelligence.get("abuseipdb") or {}).get("url"),
+                     f"https://www.abuseipdb.com/check/{encoded}"),
+                ]
+            else:
+                encoded = quote_plus(value)
+                candidates = [
+                    ("VirusTotal", (intelligence.get("virustotal") or {}).get("url"),
+                     f"https://www.virustotal.com/gui/search/{encoded}"),
+                    ("URLScan", (intelligence.get("urlscan") or {}).get("result_url")
+                     or (intelligence.get("urlscan") or {}).get("url"), ""),
+                    ("Talos", (intelligence.get("talos") or {}).get("portal_lookup"), ""),
+                ]
+            rows = []
+            for label, available_url, fallback_url in candidates:
+                url = available_url or fallback_url
+                try:
+                    parsed = urlparse(str(url))
+                except ValueError:
+                    continue
+                if parsed.scheme == "https" and parsed.hostname:
+                    rows.append([value, {"label": f"Open {label}", "url": url}])
+            return rows
+
+        document.add_heading("Email Threat Investigation", level=0)
+        title_paragraph = document.add_paragraph(
+            f"Final SOC report | {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        )
+        title_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+        subject_analysis = email_data.get("subject_analysis", {}) or {}
+        body_stats = email_data.get("body_stats", {}) or {}
+        sender_intelligence = email_data.get("sender_intelligence", {}) or {}
+        response_actions = email_data.get("response_actions", {}) or {}
+        mismatch = (email_data.get("header_analysis", {}) or {}).get("mismatch_flags", {}) or {}
+        auth_results = email_data.get("auth_results", "")
+        severity = str(email_data.get("email_severity", "Unknown"))
+        verdict = str(response_actions.get("final_verdict") or sender_intelligence.get("verdict") or "N/A")
+
+        add_key_values("Executive Summary", {
+            "Subject": email_data.get("subject"),
+            "From": email_data.get("from"),
+            "To": email_data.get("to"),
+            "Severity": severity,
+            "Email score": email_data.get("email_score"),
+            "Final analyst verdict": verdict,
+            "Investigation submitted": email_data.get("investigation_submitted", False),
+        })
+        add_key_values("Email Overview", {
+            "Source EML": email_data.get("eml_used"),
+            "Input path": email_data.get("input_path"),
+            "Plain text length": body_stats.get("plain_length"),
+            "HTML length": body_stats.get("html_length"),
+            "Hidden HTML elements": body_stats.get("hidden_html_count"),
+            "Extracted URL count": len(email_data.get("urls_extracted", []) or []),
+            "Attachment count": len(email_data.get("attachments", []) or []),
+        })
+
+        sender_domain_rows = []
+        sender_domain_provider_rows = []
+        sender_ip_rows = []
+        sender_link_rows = []
+        for domain in sender_intelligence.get("domains", []) or []:
+            whois = domain.get("whois", {}) or {}
+            dns = domain.get("dns", {}) or {}
+            vt = domain.get("virustotal", {}) or {}
+            talos = domain.get("talos", {}) or {}
+            urlscan = domain.get("urlscan_search", {}) or {}
+            rdap = domain.get("rdap", {}) or {}
+            sender_domain_rows.append([
+                domain.get("domain"),
+                ", ".join(domain.get("headers", []) or []),
+                domain.get("domain_age_days"),
+                whois.get("status"),
+                whois.get("registrar"),
+                domain.get("spf_status"),
+                ", ".join(domain.get("spf_records", []) or []),
+                domain.get("dmarc_status"),
+                ", ".join(domain.get("dmarc_records", []) or []),
+                ", ".join((dns.get("mx", {}) or {}).get("records", []) or []),
+                ", ".join(domain.get("resolved_ips", []) or []),
+                domain.get("risk_score"),
+            ])
+            sender_domain_provider_rows.append([
+                domain.get("domain"),
+                vt.get("status"),
+                vt.get("malicious"),
+                talos.get("portal_lookup"),
+                urlscan.get("status"),
+                urlscan.get("result_count"),
+                rdap.get("portal_lookup"),
+            ])
+            sender_link_rows.extend(provider_link_rows("domain", str(domain.get("domain") or ""), domain))
+            for ip_intelligence in domain.get("resolved_ip_intelligence", []) or []:
+                ip_abuse = ip_intelligence.get("abuseipdb", {}) or {}
+                ip_vt = ip_intelligence.get("virustotal", {}) or {}
+                ip_talos = ip_intelligence.get("talos", {}) or {}
+                ip_urlscan = ip_intelligence.get("urlscan_search", {}) or {}
+                sender_ip_rows.append([
+                    ip_intelligence.get("ip"),
+                    f"Resolved from {domain.get('domain', 'N/A')}",
+                    ip_vt.get("status"),
+                    ip_abuse.get("abuse_score"),
+                    ip_abuse.get("asn"),
+                    ip_abuse.get("isp"),
+                    ip_intelligence.get("risk_score"),
+                    "; ".join(ip_intelligence.get("reasons", []) or []),
+                    ip_talos.get("portal_lookup"),
+                    ip_urlscan.get("status"),
+                    ip_urlscan.get("result_count"),
+                ])
+                sender_link_rows.extend(provider_link_rows("ip", str(ip_intelligence.get("ip") or ""), ip_intelligence))
+        add_table(
+            "Sender Intelligence",
+            ["Domain", "Header role", "Age days", "WHOIS status", "Registrar", "SPF status",
+             "SPF record", "DMARC status", "DMARC record", "MX", "Resolved IPs", "Risk score",
+             ],
+            sender_domain_rows,
+        )
+        add_table(
+            "Sender Provider Results",
+            ["Domain", "VT status", "VT malicious", "Talos lookup", "URLScan status", "URLScan matches", "RDAP lookup"],
+            sender_domain_provider_rows,
+        )
+        for ip in sender_intelligence.get("ips", []) or []:
+            abuse = ip.get("abuseipdb", {}) or {}
+            ip_talos = ip.get("talos", {}) or {}
+            ip_urlscan = ip.get("urlscan_search", {}) or {}
+            sender_ip_rows.append([
+                ip.get("ip"), ", ".join(ip.get("sources", []) or []),
+                (ip.get("virustotal", {}) or {}).get("status"), abuse.get("abuse_score"),
+                abuse.get("asn"), abuse.get("isp"), ip.get("risk_score"),
+                "; ".join(ip.get("reasons", []) or []),
+                ip_talos.get("portal_lookup"), ip_urlscan.get("status"), ip_urlscan.get("result_count"),
+            ])
+            sender_link_rows.extend(provider_link_rows("ip", str(ip.get("ip") or ""), ip))
+        if sender_ip_rows:
+            add_table(
+                "Sender IP Intelligence",
+                ["IP", "Source header", "VT", "AbuseIPDB", "ASN", "Hosting / ISP", "Risk score", "Reasons",
+                 "Talos lookup", "URLScan status", "URLScan matches"],
+                sender_ip_rows,
+            )
+        for reason in sender_intelligence.get("reasons", []) or []:
+            document.add_paragraph(f"Sender finding: {display(reason)}")
+        if sender_link_rows:
+            add_table("Sender Intelligence Links", ["Indicator", "Provider"], sender_link_rows)
+
+        subject_flags = subject_analysis.get("subject_flags", []) or []
+        add_key_values("Subject / Body Analysis", {
+            "Subject": email_data.get("subject"),
+            "Subject severity": subject_analysis.get("subject_severity"),
+            "Subject score": subject_analysis.get("subject_score"),
+            "Subject findings": "; ".join(map(str, subject_flags)) if subject_flags else "N/A",
+            "Plain text length": body_stats.get("plain_length"),
+            "HTML length": body_stats.get("html_length"),
+            "Hidden HTML count": body_stats.get("hidden_html_count"),
+        })
+        add_key_values("Authentication", {
+            "Authentication-Results": auth_results,
+            "SPF result": (sender_intelligence.get("authentication", {}) or {}).get("spf"),
+            "DKIM result": re.search(r"\bdkim\s*=\s*([a-z]+)", str(auth_results), re.IGNORECASE).group(1)
+            if re.search(r"\bdkim\s*=\s*([a-z]+)", str(auth_results), re.IGNORECASE) else None,
+            "DMARC result": (sender_intelligence.get("authentication", {}) or {}).get("dmarc"),
+        })
+
+        headers_focus = email_data.get("headers_focus", {}) or {}
+        header_rows = [[key, display(value)] for key, value in headers_focus.items()]
+        add_table("Headers / Mismatches", ["Header", "Value"], header_rows)
+        add_table("Header Mismatch Findings", ["Check", "Result"], [[key, value] for key, value in mismatch.items()])
+        headers_raw = email_data.get("headers_raw", {}) or {}
+        if headers_raw:
+            add_table("Full Raw Headers", ["Header", "Value"], [[key, display(value)] for key, value in headers_raw.items()])
+
+        hop_rows = []
+        for index, hop in enumerate(email_data.get("received_hops", []) or [], start=1):
+            hop_rows.append([
+                index,
+                hop.get("from", ""),
+                hop.get("by", ""),
+                hop.get("with", ""),
+                hop.get("date", ""),
+                hop.get("delay", ""),
+                hop.get("raw", ""),
+            ])
+        add_table("Received Hops", ["#", "From", "By", "With", "Date", "Delay", "Raw"], hop_rows)
+
+        normalized_iocs = self._normalize_iocs(email_data.get("iocs", {}) or {})
+        add_table("IOC Summary", ["Type", "Count", "Indicators"], [
+            [key, value.get("count", len(value.get("items", []) or [])),
+             "; ".join(map(str, value.get("items", []) or []))]
+            for key, value in normalized_iocs.items()
+        ])
+        add_table(
+            "OSINT Summary",
+            ["Metric", "Value"],
+            [[key, display(value)] for key, value in (email_data.get("osint_summary", {}) or {}).items()],
+        )
+        ioc_rows = []
+        ioc_link_rows = []
+        whitelist_rows = []
+        for item in email_data.get("ioc_scoring", []) or []:
+            provider_context = self._normalize_provider_context(item.get("provider_context", {}) or {})
+            value = str(item.get("normalized") or "")
+            ioc_type = str(item.get("ioc_type") or "")
+            ioc_rows.append([
+                ioc_type, value, item.get("category"), item.get("vt_status"), item.get("vt_malicious"),
+                item.get("final_score"), "; ".join(self._dedup_reasons(item.get("reason", []) or [])),
+                item.get("is_whitelisted"), item.get("is_blocklisted"),
+            ])
+            if ioc_type in {"domain", "ip", "url", "hash"}:
+                ioc_link_rows.extend(provider_link_rows(ioc_type, value, {
+                    "virustotal": {"url": ""},
+                    "talos": provider_context.get("talos", {}),
+                    "urlscan_search": provider_context.get("urlscan", {}),
+                    "urlscan": provider_context.get("urlscan", {}),
+                    "rdap": provider_context.get("rdap", {}),
+                    "whois": provider_context.get("whois", {}),
+                    "abuseipdb": provider_context.get("abuseipdb", {}),
+                }))
+            whitelist_rows.append([
+                ioc_type, value, item.get("is_whitelisted"), item.get("is_blocklisted"),
+                item.get("category"),
+            ])
+        add_table(
+            "IOC Details",
+            ["Type", "Indicator", "Verdict", "VT status", "VT malicious", "Score", "Reasons", "Whitelisted", "Blocklisted"],
+            ioc_rows,
+        )
+
+        wrapper_rows = []
+        for wrapper in email_data.get("urls_extracted_detail", []) or []:
+            wrapper_rows.append([
+                wrapper.get("provider"), wrapper.get("status"),
+                wrapper.get("source"), wrapper.get("wrapped_url"),
+                wrapper.get("decoded_url"), wrapper.get("final_ioc_url"),
+            ])
+        add_table(
+            "URL Wrapper Investigation",
+            ["Provider", "Status", "Source", "Wrapped URL", "Decoded URL", "Final IOC URL"],
+            wrapper_rows,
+        )
+        add_table(
+            "Extracted URLs",
+            ["URL"],
+            [[url] for url in email_data.get("urls_extracted", []) or []],
+        )
+
+        whois_dns_rows = []
+        intelligence_rows = list(sender_intelligence.get("domains", []) or [])
+        for domain in intelligence_rows:
+            dns = domain.get("dns", {}) or {}
+            whois = domain.get("whois", {}) or {}
+            rdap = domain.get("rdap", {}) or {}
+            whois_dns_rows.append([
+                domain.get("domain"), whois.get("registrar"), whois.get("created"),
+                whois.get("expires"), whois.get("age_days", domain.get("domain_age_days")),
+                ", ".join(whois.get("nameservers", []) or []),
+                rdap.get("portal_lookup"), ", ".join(domain.get("resolved_ips", []) or []),
+                "; ".join((dns.get("mx", {}) or {}).get("records", []) or []),
+                "; ".join((dns.get("txt", {}) or {}).get("records", []) or []),
+            ])
+        for item in email_data.get("ioc_scoring", []) or []:
+            if item.get("ioc_type") not in {"domain", "url"}:
+                continue
+            providers = self._normalize_provider_context(item.get("provider_context", {}) or {})
+            whois = providers.get("whois", {}) or {}
+            rdap = providers.get("rdap", {}) or {}
+            if whois or rdap:
+                whois_dns_rows.append([
+                    item.get("normalized"), whois.get("registrar"), whois.get("created"),
+                    whois.get("expires"), whois.get("age_days"),
+                    ", ".join(whois.get("nameservers", []) or []),
+                    rdap.get("portal_lookup"), ", ".join(map(str, whois.get("ips", []) or [])),
+                    ", ".join(whois.get("mx", []) or []), "N/A",
+                ])
+        add_table(
+            "WHOIS / RDAP / DNS", ["Domain", "Registrar", "Created", "Expires", "Age days",
+             "Nameservers", "RDAP", "Resolved IPs", "MX", "TXT"], whois_dns_rows,
+        )
+
+        provider_rows = []
+        for item in email_data.get("ioc_scoring", []) or []:
+            providers = self._normalize_provider_context(item.get("provider_context", {}) or {})
+            provider_rows.append([
+                item.get("ioc_type"), item.get("normalized"), item.get("vt_status"),
+                (providers.get("abuseipdb", {}) or {}).get("abuse_score"),
+                (providers.get("urlscan", {}) or {}).get("status"),
+                (providers.get("talos", {}) or {}).get("portal_lookup"),
+            ])
+        add_table(
+            "VT / AbuseIPDB / URLScan / Talos Results",
+            ["Type", "Indicator", "VT", "AbuseIPDB", "URLScan", "Talos"],
+            provider_rows,
+        )
+        if ioc_link_rows:
+            add_table("IOC Intelligence Links", ["Indicator", "Provider"], ioc_link_rows)
+
+        attachment_rows = []
+        for attachment in email_data.get("attachments", []) or []:
+            vt_hash = attachment.get("vt_hash", {}) or {}
+            attachment_rows.append([
+                attachment.get("filename"), attachment.get("size", attachment.get("length")),
+                attachment.get("sha256"), vt_hash.get("vt_status"),
+                vt_hash.get("vt_malicious"), attachment.get("talos"),
+            ])
+        add_table(
+            "Attachments", ["Filename", "Size bytes", "SHA256", "VT status", "VT malicious", "Talos"],
+            attachment_rows,
+        )
+        sender_rows = [
+            ["Domain", domain.get("domain"), domain.get("whitelisted"), domain.get("blocklisted")]
+            for domain in sender_intelligence.get("domains", []) or []
+        ]
+        sender_rows.extend([
+            ["IP", ip.get("ip"), ip.get("whitelisted"), ip.get("blocklisted")]
+            for ip in sender_intelligence.get("ips", []) or []
+        ])
+        add_table(
+            "Whitelist / Blocklist Findings",
+            ["Type", "Indicator", "Whitelisted", "Blocklisted", "Verdict"],
+            whitelist_rows + sender_rows,
+        )
+
+        campaign_alert_rows = flatten_values(email_data.get("campaign", {}) or {}, "Campaign")
+        campaign_alert_rows.extend(flatten_values(email_data.get("alert", {}) or {}, "Alert"))
+        add_table("Campaign / Alert Findings", ["Finding", "Details"], campaign_alert_rows)
+
+        add_key_values("Threat Verdict / Score / Reasons", {
+            "Email severity": severity,
+            "Email score": email_data.get("email_score"),
+            "Email reasons": "; ".join(map(str, email_data.get("email_score_reasons", []) or [])),
+            "Sender verdict": sender_intelligence.get("verdict"),
+            "Sender risk score": sender_intelligence.get("risk_score"),
+            "Sender reasons": "; ".join(map(str, sender_intelligence.get("reasons", []) or [])),
+        })
+        add_key_values("Analyst Comments", {
+            "Analyst comment": email_data.get("analyst_comment"),
+        })
+        selected_actions = [
+            label for key, label in (
+                ("block_domain", "Block Domain"),
+                ("block_url", "Block URL"),
+                ("block_sender", "Block Sender"),
+                ("escalate_tier2", "Escalate to Tier 2"),
+                ("search_similar", "Search Similar Emails"),
+            )
+            if response_actions.get(key)
+        ]
+        add_key_values("Final Investigation / Response Actions", {
+            "Finding": response_actions.get("finding"),
+            "Action Taken": response_actions.get("action_taken"),
+            "Recommendation": response_actions.get("recommendation"),
+            "Final Analyst Verdict": response_actions.get("final_verdict"),
+            "Selected Response Actions": ", ".join(selected_actions) if selected_actions else "None",
+            "Response Notes": response_actions.get("response_notes"),
+            "Submitted Time": response_actions.get("submitted_time") or email_data.get("submitted_time"),
+        })
+
+        recommended_actions = (email_data.get("alert", {}) or {}).get("recommended_actions", []) or []
+        if not recommended_actions:
+            if "high" in severity.lower() or "malicious" in severity.lower():
+                recommended_actions = [
+                    "Quarantine the email and block the sender/source immediately.",
+                    "Review attachment hashes and provider results before opening.",
+                    "Block and investigate final IOC URLs and related infrastructure.",
+                ]
+            else:
+                recommended_actions = [
+                    "Monitor the IOCs and consider blocking identified malicious infrastructure.",
+                    "Notify recipients and provide phishing awareness guidance.",
+                    "Submit key IOCs to OSINT providers for enrichment if uncertainty remains.",
+                ]
+        add_table("Recommended Actions", ["#", "Action"], [
+            [index, action] for index, action in enumerate(recommended_actions, start=1)
+        ])
+
+        document.save(report_path)
+        logger.info("Word report generated: %s", report_path)
         return report_path
     
     # ============================================================

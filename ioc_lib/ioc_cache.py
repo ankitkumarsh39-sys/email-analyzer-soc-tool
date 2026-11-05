@@ -44,7 +44,7 @@ def save_cache(cache):
     """
 
     try:
-        with open(CACHE_FILE, "w", encoding="utf=8") as f:
+        with open(CACHE_FILE, "w", encoding="utf-8") as f:
             json.dump(cache, f, ensure_ascii=False, indent=2)
     
     except PermissionError:
@@ -74,7 +74,7 @@ def get_cached(ioc_type: str, value: str) -> Optional[Dict[str, Any]]:
 
     # Not in cache → reanalyz
     if not entry:
-        print(f"[CACHE MISS] {value}")
+        logger.debug("IOC cache miss: %s", value)
         return None
 
     try:
@@ -84,23 +84,12 @@ def get_cached(ioc_type: str, value: str) -> Optional[Dict[str, Any]]:
     
     # if older than 48h -> reanalyze
     if datetime.now() - last_checked > timedelta(hours=EXPIRY_HOURS):
-        print(f"[CACHE MISS] {value}")
+        logger.debug("IOC cache expired: %s", value)
         return None
     
     # Use Cache
-    print(f"[CACHE Data used] {value}")
+    logger.debug("IOC cache hit: %s", value)
     return entry.get("data")
-
-    # ------------------------------------------------------------
-    # EXPIRY CHECK ✅
-    # ------------------------------------------------------------
-    if datetime.now() - last_checked > timedelta(hours=EXPIRY_HOURS):
-        print(f"[CACHE EXPIRED ⏰] {value}")
-        return None
-
-    print(f"[CACHE HIT ✅] {value}")
-    return entry.get("data")
-
 
 # ------------------------------------------------------------
 # SET CACHE ENTRY
@@ -133,4 +122,4 @@ def set_cache(ioc_type: str, value: str, data: Dict[str, Any]) -> None:
 
     save_cache(cache)
 
-    print(f"[CACHE SAVED 💾] {value}")
+    logger.debug("IOC cache saved: %s", value)

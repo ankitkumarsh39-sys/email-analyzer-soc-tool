@@ -24,9 +24,27 @@ import re
 import logging
 from typing import List, Tuple, Dict, Any, Set
 from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 
 # Module-level logger (inherits handlers & levels from main.py)
 logger = logging.getLogger(__name__)
+
+
+def sanitize_ioc_text(text: str) -> str:
+    """Remove HTML markup and NUL bytes while keeping linked indicator URLs."""
+    if not text:
+        return ""
+
+    soup = BeautifulSoup(str(text).replace("\x00", ""), "html.parser")
+    linked_values = [
+        str(value)
+        for tag in soup.find_all(True)
+        for attribute in ("href", "src")
+        if (value := tag.get(attribute))
+    ]
+    visible_text = soup.get_text(" ", strip=True)
+    return " ".join(part for part in (visible_text, *linked_values) if part)
+
 
 # -----------------------------------------------------------------------------
 # 1) IOC NORMALIZATION (Refanging / De-obfuscation)
@@ -58,7 +76,8 @@ def normalize_ioc(ioc: str, ioc_type: str | None = None) -> str:
         return ""
 
     cleaned = (
-        ioc.replace("[.]", ".")          # defanged dot
+        re.sub(r"<[^>]*>", "", str(ioc).replace("\x00", ""))
+           .replace("[.]", ".")          # defanged dot
            .replace("(.)", ".")          # defanged dot alt
            .replace("[://]", "://")      # defanged scheme separator
            .replace("[:]", ":")          # defanged colon
@@ -157,7 +176,7 @@ def extract_iocs_from_text(text: str) -> Tuple[List[str], List[str], List[str], 
     - analyzer.py expects this exact order for unpacking:
       ips, domains, urls, hashes = extract_iocs_from_text(...)
     """
-    text = text or ""
+    text = sanitize_ioc_text(text)
 
     # -------------------------
     # Step 1: Extract URLs first (because domains can come from URLs too)

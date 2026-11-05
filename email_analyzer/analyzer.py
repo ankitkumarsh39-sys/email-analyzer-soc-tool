@@ -1473,14 +1473,10 @@ def analyze_sender_intelligence(
     }
 
 
-#-----------------------------------------------------------------
-    """
-    Keep only the most important headers for human-readable reporting.
-    Full headers are still returned separately.
-    """
 #---------------------------------------------------------------------
 
 def _extract_header_focus(headers: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep the most important headers for human-readable reporting."""
 
     focus_keys = [
         "From", "To", "Cc", "Bcc", "Subject", "Date", "Message-ID",
@@ -1500,15 +1496,11 @@ def _extract_header_focus(headers: Dict[str, Any]) -> Dict[str, Any]:
 
     return out
 
-#---------------------------------------------------------------------------------------
-    """
-    Lightweight phishing-oriented subject inspection.
-    Returns structured flags for scoring/reporting.
-    """
 #----------------------------------------------------------------------------------------
 
 def analyze_subject_threat(subject: str) -> Dict[str, Any]:
- 
+    """Inspect the subject for lightweight phishing indicators."""
+
     s = (subject or "").strip()
     s_lower = s.lower()
 
@@ -1555,7 +1547,10 @@ def analyze_subject_threat(subject: str) -> Dict[str, Any]:
     }
 
 #--------------------------------------------------------------------------------------------
+
+def calculate_email_severity_score(email_data: Dict[str, Any]) -> Dict[str, Any]:
     """Calculate a simple severity score based on various indicators.
+
     This intended for phishing  / Suspicious email scoring in final reports.
     It uses:
     - IOC verdicts (more IOCs = higher score)
@@ -1566,8 +1561,6 @@ def analyze_subject_threat(subject: str) -> Dict[str, Any]:
     output is added back into email_data so reporter / SIEM can use it for sorting/prioritization.
     """
 #---------------------------------------------------------------------------------------------
-
-def calculate_email_severity_score(email_data: Dict[str, Any]) -> Dict[str, Any]:
     score = 0
     reason: List[str] = []
 
@@ -2196,7 +2189,8 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
                     "vt_status": vt_status
                 }
  
-                if vt_malicious == 0:
+                # Do not submit attachments when the lookup failed or no API key is configured.
+                if vt_status == "0 hits" and ioc_engine.vt.vt_api_key:
                     vt_upload_result = ioc_engine.vt.submit_file_bytes(filename, payload)
  
                 talos_result = talos_lookup_reference(h)

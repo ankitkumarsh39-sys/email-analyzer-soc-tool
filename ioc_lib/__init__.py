@@ -14,6 +14,7 @@ import re
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from ioc_lib.ioc_validator import sanitize_ioc_text
 
 
 @dataclass
@@ -85,9 +86,10 @@ class IOCValidator:
         """
         if not text:
             self.logger.warning("Empty text provided for IOC extraction")
-            return IOCResult([], [], [], [], [])
+            return IOCResult([], [], [], [])
 
         try:
+            text = sanitize_ioc_text(text)
             ips = self._extract_ips(text)
             domains = self._extract_domains(text)
             urls = self._extract_urls(text)
@@ -102,7 +104,7 @@ class IOCValidator:
 
         except Exception as e:
             self.logger.error(f"Error extracting IOCs: {str(e)}")
-            return IOCResult([], [], [], [], [])
+            return IOCResult([], [], [], [])
 
     def _extract_ips(self, text: str) -> List[str]:
         """Extract IP addresses (supports defanged patterns)."""
@@ -177,7 +179,8 @@ class IOCValidator:
             Normalized IOC
         """
         cleaned = (
-            ioc.replace("[.]", ".")
+            re.sub(r"<[^>]*>", "", str(ioc).replace("\x00", ""))
+               .replace("[.]", ".")
                .replace("(.)", ".")
                .replace("[://]", "://")
                .replace("hxxps://", "https://")

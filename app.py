@@ -36,6 +36,7 @@ DEFAULT_SESSION_VALUES = {
     "last_uploaded_name": None,
     "json_report_path": None,
     "txt_report_path": None,
+    "word_report_path": None,
     "uploaded_eml_path": None,
     "show_only_malicious": False,
 }
@@ -957,7 +958,10 @@ def build_mismatch_df(email_data: dict) -> pd.DataFrame:
         {"Field": "Return-Path Mismatch", "Value": mismatch.get("return_path_mismatch", False)},
         {"Field": "Sender Mismatch", "Value": mismatch.get("sender_mismatch", False)},
     ]
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df["Value"] = df["Value"].map(str)
+    return df
 
 #----------------------------------------------------------------------------------------------------------
 
@@ -1091,7 +1095,8 @@ def show_ioc_detail(email_data: dict, selected_value: str):
             {"Field": "Created", "Value": whois.get("created", "")},
             {"Field": "Expires", "Value": whois.get("expires", "")},
         ])
-        st.dataframe(whois_df, use_container_width=True, hide_index=True)
+        whois_df["Value"] = whois_df["Value"].map(str)
+        st.dataframe(whois_df, width="stretch", hide_index=True)
 
     abuseipdb = provider.get("abuseipdb", {}) or {}
     if abuseipdb:
@@ -1107,7 +1112,9 @@ def show_ioc_detail(email_data: dict, selected_value: str):
             {"Field": "ASN", "Value": abuseipdb.get("asn", "N/A")},
             {"Field": "Status", "Value": abuseipdb.get("status", "N/A")},
         ]
-        st.dataframe(pd.DataFrame(abuse_rows), use_container_width=True, hide_index=True)
+        abuse_df = pd.DataFrame(abuse_rows)
+        abuse_df["Value"] = abuse_df["Value"].map(str)
+        st.dataframe(abuse_df, width="stretch", hide_index=True)
 
     reasons = selected.get("reason", []) or []
     if reasons:
@@ -1118,7 +1125,7 @@ def show_ioc_detail(email_data: dict, selected_value: str):
     with st.expander("🌐 WHOIS / RDAP / Talos / Reputation", expanded=True):
         osint_df = build_osint_df(provider)
         if not osint_df.empty:
-            st.dataframe(osint_df, use_container_width=True, hide_index=True)
+            st.dataframe(osint_df, width="stretch", hide_index=True)
         else:
             st.info("No OSINT data available for this IOC.")
 
@@ -1427,7 +1434,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
         st.markdown("### URL Wrapper Evidence")
         wrapper_df = build_url_wrapper_df(email_data)
         if not wrapper_df.empty:
-            st.dataframe(wrapper_df, use_container_width=True, hide_index=True)
+            st.dataframe(wrapper_df, width="stretch", hide_index=True)
         else:
             st.info("No URL wrapper evidence found.")
 
@@ -1460,7 +1467,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
     with tab_att:
         st.subheader("Attachments")
         att_df = build_attachment_df(email_data)
-        st.dataframe(att_df, use_container_width=True, hide_index=True)
+        st.dataframe(att_df, width="stretch", hide_index=True)
 
         if email_data.get("attachments"):
             st.markdown("### Attachment Details")
@@ -1501,7 +1508,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
             elif whitelist_df is None or whitelist_df.empty:
                 st.info("Whitelist file is empty or missing.")
             else:
-                st.dataframe(whitelist_df, use_container_width=True)
+                st.dataframe(whitelist_df, width="stretch")
                 with st.expander("Download whitelist.xlsx"):
                     st.download_button(
                         label="Download whitelist.xlsx",
@@ -1516,7 +1523,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
             elif blocklist_df is None or blocklist_df.empty:
                 st.info("Blocklist file is empty or missing.")
             else:
-                st.dataframe(blocklist_df, use_container_width=True)
+                st.dataframe(blocklist_df, width="stretch")
                 with st.expander("Download blocklist.xlsx"):
                     st.download_button(
                         label="Download blocklist.xlsx",
@@ -1588,7 +1595,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
                 "Blocklisted": domain.get("blocklisted", False),
             })
         if domain_rows:
-            st.dataframe(pd.DataFrame(domain_rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(domain_rows), width="stretch", hide_index=True)
 
         for domain_index, domain in enumerate(sender_intelligence.get("domains", []) or []):
             domain_name = domain.get("domain", "")
@@ -1683,7 +1690,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
                 "Blocklisted": sender_ip.get("blocklisted", False),
             })
         if ip_rows:
-            st.dataframe(pd.DataFrame(ip_rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(ip_rows), width="stretch", hide_index=True)
             for sender_index, sender_ip in enumerate(sender_intelligence.get("ips", []) or []):
                 with st.expander(f"IP details: {sender_ip.get('ip', 'unknown')}"):
                     abuse = sender_ip.get("abuseipdb", {}) or {}
@@ -1716,23 +1723,23 @@ if st.session_state.analysis_done and st.session_state.email_data:
 
         st.markdown("### IOC Observed")
         observed_df = build_ioc_observed_df(email_data)
-        st.dataframe(observed_df, use_container_width=True, hide_index=True)
+        st.dataframe(observed_df, width="stretch", hide_index=True)
 
         st.markdown("### Domain WHOIS Summary")
         whois_summary_df = build_domain_whois_summary_df(email_data)
         if not whois_summary_df.empty:
-            st.dataframe(whois_summary_df, use_container_width=True, hide_index=True)
+            st.dataframe(whois_summary_df, width="stretch", hide_index=True)
         else:
             st.info("No WHOIS details available for domain IOCs in this analysis.")
 
         st.markdown("### 📌 Subject Analysis")
-        st.dataframe(build_subject_analysis_df(email_data), use_container_width=True, hide_index=True)
+        st.dataframe(build_subject_analysis_df(email_data), width="stretch", hide_index=True)
 
         st.markdown("### 📄 Body Summary")
-        st.dataframe(build_body_summary_df(email_data), use_container_width=True, hide_index=True)
+        st.dataframe(build_body_summary_df(email_data), width="stretch", hide_index=True)
 
         st.markdown("### 🧪 Campaign Summary")
-        st.dataframe(build_campaign_summary_df(email_data), use_container_width=True, hide_index=True)
+        st.dataframe(build_campaign_summary_df(email_data), width="stretch", hide_index=True)
 
         st.markdown("### 🔎 OSINT Summary")
         osint_summary = email_data.get("osint_summary", {}) or {}
@@ -1741,14 +1748,14 @@ if st.session_state.analysis_done and st.session_state.email_data:
         st.write(f"URLScan Hits: {osint_summary.get('urlscan_hits', 0)}")
 
         st.markdown("### 🚨 Alert Summary")
-        st.dataframe(build_alert_summary_df(email_data), use_container_width=True, hide_index=True)
+        st.dataframe(build_alert_summary_df(email_data), width="stretch", hide_index=True)
 
 # Header Details
     with tab_header:
         st.subheader("Header Details")
 
         st.markdown("### 📨 Mismatch Checks")
-        st.dataframe(build_mismatch_df(email_data), use_container_width=True, hide_index=True)
+        st.dataframe(build_mismatch_df(email_data), width="stretch", hide_index=True)
 
         st.markdown("### 🔐 Authentication Results")
         st.code(str(email_data.get("auth_results", "Not Found")), language="text")
@@ -1764,7 +1771,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
 
             if not df.empty:
                 styled_df = df.style.apply(highlight_risk, axis=1)
-                st.dataframe(styled_df, use_container_width=True)
+                st.dataframe(styled_df, width="stretch")
             else:
                 st.warning("No hop data available")
 
@@ -1920,6 +1927,7 @@ if st.session_state.analysis_done and st.session_state.email_data:
                         "submitted_time": datetime.now().astimezone().isoformat(timespec="seconds"),
                     }
                     final_email_data["investigation_submitted"] = True
+                    final_email_data["submitted_time"] = final_email_data["response_actions"]["submitted_time"]
                     st.session_state.email_data = final_email_data
 
                     # Create final reports from saved data without running analysis again.
@@ -1927,12 +1935,14 @@ if st.session_state.analysis_done and st.session_state.email_data:
                     final_reporter = MailReporter(output_dir="reports")
                     st.session_state.txt_report_path = final_reporter.generate_text_report(final_email_data)
                     st.session_state.json_report_path = final_reporter.generate_json_report(final_email_data)
+                    st.session_state.word_report_path = final_reporter.generate_word_report(final_email_data)
                     st.success("Investigation submitted and final reports generated successfully.")
 
             current_email_data = st.session_state.get("email_data") or {}
             if current_email_data.get("investigation_submitted"):
                 final_txt_path = st.session_state.get("txt_report_path")
                 final_json_path = st.session_state.get("json_report_path")
+                final_word_path = st.session_state.get("word_report_path")
                 if final_txt_path and os.path.exists(final_txt_path):
                     st.download_button(
                         label="📄 Download Final TXT",
@@ -1948,6 +1958,14 @@ if st.session_state.analysis_done and st.session_state.email_data:
                         file_name=os.path.basename(final_json_path),
                         mime="application/json",
                         key="download_final_json",
+                    )
+                if final_word_path and os.path.exists(final_word_path):
+                    st.download_button(
+                        label="📘 Download Final Word Report",
+                        data=read_file_bytes(final_word_path),
+                        file_name=os.path.basename(final_word_path),
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key="download_final_word",
                     )
 
 

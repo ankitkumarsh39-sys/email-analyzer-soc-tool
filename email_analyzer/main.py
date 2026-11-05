@@ -142,6 +142,7 @@ def setup_logging(project_root: str, reports_dir: str) -> str:
     boot.info("==== Email Analyzer started ====")
     boot.info("BOOT - Report log: %s", report_log)
     boot.info("BOOT - Global log: %s", global_log)
+    return report_log
 
 # ----------------------------
 # Input Resolver
@@ -290,16 +291,9 @@ def main():
         logger.debug("Text report path: %s", txt_path)
         logger.info("Text report generated:")
 
-        # ✅ BLOCKLIST (EXCEL DB)
-        # ✅ Update config DB
+        # Update the configured blocklist once from the completed analysis.
         reporter.update_config_blocklist_excel(email_data)
 
-        # ✅ Generate blocklist report file
-        # Generate IOC blocklist Excel
-        reporter.update_config_blocklist_excel(email_data)
-        blocklist_path = "reports/ioc_blocklist.xlsx"
-
-        logger.debug("Blocklist path: %s", blocklist_path)
         logger.info("Blocklist generated:")
         logger.info("Blocklist created:")
 

@@ -9,6 +9,7 @@ Purpose:
 
 import os
 import time
+import hashlib
 import logging
 from datetime import datetime
 
@@ -69,7 +70,7 @@ def process_one_eml(eml_path: str, project_root: str, reports_dir: str,
 
     if not email_data:
         logger.error("Analysis failed - malformed or empty email: %s", eml_path)
-    return
+        return False
 
     # ----------------------------
     # Generate Reports
@@ -107,6 +108,7 @@ def process_one_eml(eml_path: str, project_root: str, reports_dir: str,
     # ----------------------------
     logger.info("Report log file:")
     logger.info("==== Email Analyzer finished ====")
+    return True
 
 
 # ----------------------------
@@ -163,6 +165,7 @@ def run_cycle(mode: str,
         selected_files = eml_files
 
     count = 0
+    seen_hashes = set()
 
     for fn in selected_files:
         full_path = os.path.join(inbox_dir, fn)
@@ -171,22 +174,21 @@ def run_cycle(mode: str,
             logging.getLogger(__name__).warning("File not stable yet: %s", full_path)
             continue
         
-        # ✅ ADD HASH CALCULATION HERE
-            try:
-                with open(full_path, "rb") as f:
-                    file_hash = hashlib.sha256(f.read()).hexdigest()
-            except Exception:
-                logging.getLogger(__name__).error("Failed to hash file: %s", full_path)
-                continue
+        try:
+            with open(full_path, "rb") as f:
+                file_hash = hashlib.sha256(f.read()).hexdigest()
+        except OSError:
+            logging.getLogger(__name__).exception("Failed to hash file: %s", full_path)
+            continue
 
-            # ✅ DUPLICATE CHECK
-            if file_hash in seen_hashes:
-                logging.getLogger(__name__).info("Duplicate email skipped: %s", fn)
-                continue
+        if file_hash in seen_hashes:
+            logging.getLogger(__name__).info("Duplicate email skipped: %s", fn)
+            continue
 
-            seen_hashes.add(file_hash)
+        seen_hashes.add(file_hash)
 
-            process_one_eml(full_path, project_root, reports_dir, processed_dir, failed_dir)
+        if process_one_eml(full_path, project_root, reports_dir, processed_dir, failed_dir):
+            count += 1
 
     return count
 

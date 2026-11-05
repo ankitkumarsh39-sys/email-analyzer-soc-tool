@@ -27,8 +27,9 @@ What it does:
 
 4) VirusTotal v3 lookups with caching (vt_cache.json)
 5) Classification:
-   - Malicious if (blocklisted OR VT malicious score > 0)
-   - Clean otherwise
+   - Malicious when blocklist or provider evidence confirms malicious activity
+   - Clean only when independent provider evidence supports a clean verdict
+   - Unknown when available evidence is missing or inconclusive
 
 6) Cancellation support:
    - Press 'q' on Windows during long VT lookups
@@ -52,8 +53,8 @@ from urllib.parse import quote
 import requests
 import iocextract
 from dotenv import load_dotenv
+from ioc_lib.ioc_validator import sanitize_ioc_text
 
-from email_analyzer.utils.whois_utils import whois_lookup
 from ioc_lib.ioc_cache import get_cached, set_cache
 
 # Windows-only keypress detection for cancel support
@@ -206,7 +207,7 @@ class IOCRecord:
     vt_status: str            # "2 hits", "Lookup Error", etc.
     is_whitelisted: bool      # Tag only (NOT skipping)
     is_blocklisted: bool      # Forces malicious
-    category: str             # "Malicious" or "Clean"
+    category: str             # "Malicious", "Clean", or "Unknown"
 
     # NEW: Multi-Source scoring fields
     final_score: int = 0             # Combined score from all sources
@@ -217,7 +218,6 @@ class IOCRecord:
 load_dotenv()
 URLSCAN_API_KEY = os.getenv("URLSCAN_API_KEY")
 ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY")
-ANYRUN_API_KEY = os.getenv("ANYRUN_API_KEY")
 WHOISJSON_API_KEY = os.getenv("WHOISJSON_API_KEY")
 
 class IocsClient:
@@ -243,18 +243,12 @@ class IocsClient:
         # Prefer .env key if present, otherwise fallback to provided api_key
         self.vt_api_key = os.getenv("VT_API_KEY") or api_key
 
-        if not self.vt_api_key:
-            raise ValueError(
-                "VT API key missing. Ensure VT_API_KEY is set in .env or provided explicitly."
-            )
-
         # Reusable session for connection pooling
         
         self.session = requests.Session()
-        self.session.headers.update({
-            "Accept": "application/json",
-            "x-apikey": self.vt_api_key
-        })
+        self.session.headers.update({"Accept": "application/json"})
+        if self.vt_api_key:
+            self.session.headers.update({"x-apikey": self.vt_api_key})
 
         # Optional: request timeout control
         self.request_timeout = 20 # seconds 
@@ -292,6 +286,9 @@ class IocsClient:
         if ioc_type not in endpoints:
             return 0, "Unsupported IOC Type"
 
+        if not self.vt_api_key:
+            return 0, "VT API key missing"
+
         resource_id = self._get_url_id(normalized) if ioc_type == "url" else normalized
         api_url = f"https://www.virustotal.com/api/v3/{endpoints[ioc_type]}/{resource_id}"
 
@@ -328,6 +325,9 @@ class IocsClient:
         - <= 32 MB: direct POST to /api/v3/files
         - > 32 MB: get one-time upload URL first
         """
+        if not self.vt_api_key:
+            return {"status": "VT API key missing"}
+
         try:
             size_bytes = len(file_bytes)
 
@@ -439,243 +439,6 @@ def abuseipdb_lookup(ip: str) -> dict:
             "status": "error",
             "error": str(e)
         }
-
-def anyrun_url_lookup(url: str) -> dict:
-    """
-    Submit a URL to the ANY.RUN sandbox endpoint.
-    """
-    if not ANYRUN_API_KEY:
-        return {}
-
-    try:
-        headers = {
-            "API-Key": ANYRUN_API_KEY,
-            "Authorization": f"API-Key {ANYRUN_API_KEY}",
-            "Accept": "application/json"
-        }
-
-        payload = {
-            "url": url,
-            "env_os": "windows",
-            "visibility": "unlisted"
-        }
-
-        r = requests.post(
-            "https://api.any.run/v1/analysis",
-            headers=headers,
-            json=payload,
-            timeout=20
-        )
-
-        if r.status_code not in (200, 201, 202):
-            return {
-                "source": "ANY.RUN",
-                "status": f"failed_{r.status_code}",
-                "raw_status": r.text[:500]
-            }
-
-        data = r.json()
-        analysis_id = data.get("data", {}).get("id") or data.get("id")
-        result_url = (
-            data.get("url") or
-            data.get("result") or
-            data.get("data", {}).get("attributes", {}).get("url") or
-            data.get("data", {}).get("attributes", {}).get("result")
-        )
-
-        output = {
-            "source": "ANY.RUN",
-            "status": "submitted",
-            "analysis_id": analysis_id,
-            "raw": data
-        }
-
-        if result_url:
-            output["url"] = result_url
-
-        return output
-
-    except Exception as e:
-        return {
-            "source": "ANY.RUN",
-            "status": "error",
-            "error": str(e)
-        }
-
-
-def anyrun_file_lookup(filename: str, file_bytes: bytes) -> dict:
-    """
-    Submit a file attachment to ANY.RUN sandbox for analysis.
-    """
-    if not ANYRUN_API_KEY:
-        return {}
-
-    try:
-        headers = {
-            "API-Key": ANYRUN_API_KEY,
-            "Authorization": f"API-Key {ANYRUN_API_KEY}",
-            "Accept": "application/json"
-        }
-        files = {
-            "file": (filename, file_bytes)
-        }
-
-        r = requests.post(
-            "https://api.any.run/v1/analysis",
-            headers=headers,
-            files=files,
-            data={"env_os": "windows", "visibility": "unlisted"},
-            timeout=60
-        )
-
-        if r.status_code not in (200, 201, 202):
-            return {
-                "source": "ANY.RUN",
-                "status": f"failed_{r.status_code}",
-                "raw_status": r.text[:1000]
-            }
-
-        data = r.json()
-        analysis_id = data.get("data", {}).get("id") or data.get("id")
-        analysis_url = (
-            data.get("url") or
-            data.get("result") or
-            data.get("data", {}).get("attributes", {}).get("url") or
-            data.get("data", {}).get("attributes", {}).get("result")
-        )
-
-        output = {
-            "source": "ANY.RUN",
-            "status": "submitted",
-            "analysis_id": analysis_id,
-            "raw": data
-        }
-
-        if analysis_url:
-            output["url"] = analysis_url
-
-        return output
-
-    except Exception as e:
-        return {
-            "source": "ANY.RUN",
-            "status": "error",
-            "error": str(e)
-        }
-
-
-def anyrun_get_analysis(analysis_id: str) -> dict:
-    """
-    Retrieve ANY.RUN analysis status or report metadata.
-    """
-    if not ANYRUN_API_KEY or not analysis_id:
-        return {}
-
-    headers = {
-        "API-Key": ANYRUN_API_KEY,
-        "Authorization": f"API-Key {ANYRUN_API_KEY}",
-        "Accept": "application/json"
-    }
-
-    endpoints = [
-        f"https://api.any.run/v1/analysis/{analysis_id}",
-        f"https://api.any.run/v1/analysis/{analysis_id}/report",
-        f"https://api.any.run/report/{analysis_id}/ioc/json",
-    ]
-
-    for endpoint in endpoints:
-        try:
-            for attempt in range(3):
-                r = requests.get(endpoint, headers=headers, timeout=20)
-                if r.status_code == 200:
-                    data = r.json()
-                    response = {
-                        "source": "ANY.RUN",
-                        "status": "ok",
-                        "analysis_id": analysis_id,
-                        "raw": data
-                    }
-                    if isinstance(data, dict):
-                        state = (
-                            data.get("data", {})
-                            .get("attributes", {})
-                            .get("state")
-                        )
-                        if state:
-                            response["analysis_state"] = state
-                    return response
-
-                if r.status_code in (202, 102):
-                    time.sleep(3)
-                    continue
-
-                if r.status_code == 404:
-                    break
-
-                return {
-                    "source": "ANY.RUN",
-                    "status": f"failed_{r.status_code}",
-                    "analysis_id": analysis_id,
-                    "raw_status": r.text[:1000]
-                }
-
-        except Exception as e:
-            return {
-                "source": "ANY.RUN",
-                "status": "error",
-                "error": str(e),
-                "analysis_id": analysis_id
-            }
-
-    return {
-        "source": "ANY.RUN",
-        "status": "not_found",
-        "analysis_id": analysis_id
-    }
-
-
-def anyrun_list_analyses(limit: int = 20) -> dict:
-    """
-    Retrieve recent ANY.RUN analysis history using the official endpoint.
-    """
-    if not ANYRUN_API_KEY:
-        return {}
-
-    headers = {
-        "API-Key": ANYRUN_API_KEY,
-        "Authorization": f"API-Key {ANYRUN_API_KEY}",
-        "Accept": "application/json"
-    }
-    params = {"limit": limit}
-
-    try:
-        r = requests.get("https://api.any.run/v1/analysis", headers=headers, params=params, timeout=20)
-        if r.status_code != 200:
-            return {
-                "source": "ANY.RUN",
-                "status": f"failed_{r.status_code}",
-                "raw_status": r.text[:1000]
-            }
-
-        data = r.json()
-        tasks = []
-        if isinstance(data, dict):
-            tasks = (data.get("data", {}) or {}).get("tasks", []) or []
-
-        return {
-            "source": "ANY.RUN",
-            "status": "ok",
-            "items": tasks,
-            "raw": data
-        }
-
-    except Exception as e:
-        return {
-            "source": "ANY.RUN",
-            "status": "error",
-            "error": str(e)
-        }
-
 
 # -------------------------------------------------------------------------
 # URLScan helper
@@ -958,27 +721,9 @@ def rdap_lookup_reference(domain: str) -> dict:
 
 def is_valid_domain_candidate(candidate: str) -> bool:
     """
-    Validate domain candidates using tldextract / Public Suffix logic.
-
-    Why this is needed:
-    - avoids false positives like header.from / smtp.mailfrom
-    - avoids email local-part fragments like ankit.gp.kumar
-    - preserves real domains that use valid TLDs, including newer TLDs
+    Validate domain candidates using the local valid-TLD list.
     """
-    if not candidate or "." not in candidate:
-        return False
-
-    candidate = candidate.strip().lower().strip(".")
-    if not candidate:
-        return False
-
-    ext = tldextract.extract(candidate)
-
-    # Must have both a domain and suffix to be considered a real domain
-    if not ext.domain or not ext.suffix:
-        return False
-
-    return True
+    return has_valid_tld(candidate)
 
 
 def is_header_token_false_positive(candidate: str) -> bool:
@@ -1196,7 +941,7 @@ class IOCAnalyzer:
     # IOC normalize / refang
     # -------------------------------------------------------------------------
     def normalize_ip(self, ip: str) -> str:
-        return str(ip).replace("[.]", ".").replace("(.)", ".")
+        return re.sub(r"<[^>]*>", "", str(ip).replace("\x00", "")).replace("[.]", ".").replace("(.)", ".")
 
     def normalize_ioc(self, ioc: str, ioc_type: str) -> str:
         """
@@ -1207,7 +952,7 @@ class IOCAnalyzer:
         - other IOC types are lowercased
         """
         cleaned = (
-            str(ioc)
+            re.sub(r"<[^>]*>", "", str(ioc).replace("\x00", ""))
             .replace("[.]", ".")
             .replace("(.)", ".")
             .replace("{.}", ".")
@@ -1231,6 +976,8 @@ class IOCAnalyzer:
         """
         if not text:
             return {"ips": [], "domains": [], "urls": [], "hashes": []}
+
+        text = sanitize_ioc_text(text)
 
         # IPs (supports defanged)
         ip_candidates = re.findall(
@@ -1423,11 +1170,35 @@ class IOCAnalyzer:
         return {
             "urlscan": provider_context.get("urlscan", {}) or {},
             "abuseipdb": provider_context.get("abuseipdb", {}) or {},
-            "anyrun": provider_context.get("anyrun", {}) or {},
             "talos": provider_context.get("talos", {}) or {},
             "rdap": provider_context.get("rdap", {}) or {},
             "whois": provider_context.get("whois", {}) or {},
         }
+
+    @staticmethod
+    def _has_clean_reputation(ioc_type: str, vt_status: str, providers: Dict[str, Any]) -> bool:
+        """Require a successful independent reputation source before calling an IOC clean."""
+        if vt_status != "0 hits":
+            return False
+
+        if ioc_type == "ip":
+            abuseipdb = providers.get("abuseipdb", {}) or {}
+            try:
+                return (
+                    abuseipdb.get("status") == "ok"
+                    and int(abuseipdb.get("abuse_score", 0) or 0) < 70
+                )
+            except (TypeError, ValueError):
+                return False
+
+        if ioc_type == "url":
+            urlscan = providers.get("urlscan", {}) or {}
+            return (
+                urlscan.get("status") == "ok"
+                and urlscan.get("urlscan_malicious") is False
+            )
+
+        return False
 
     def enrich_ioc(self, raw: str, ioc_type: str, force_refresh: bool = False) -> IOCRecord:
         """
@@ -1449,7 +1220,7 @@ class IOCAnalyzer:
             reasons = cached.get("reason", []) or []
             reasons = dedup_reason_list(reasons)
 
-            category = str(cached.get("category", "Clean"))
+            category = str(cached.get("category", "Unknown"))
             provider_context = self._build_provider_context(cached.get("provider_context", {}) or {})
 
         else:
@@ -1457,7 +1228,6 @@ class IOCAnalyzer:
             provider_context = {
                 "urlscan": {},
                 "abuseipdb": {},
-                "anyrun": {},
                 "talos": {},
                 "rdap": {},
                 "whois": {},
@@ -1465,7 +1235,6 @@ class IOCAnalyzer:
 
             if ioc_type == "url":
                 provider_context["urlscan"] = urlscan_lookup(normalized)
-                provider_context["anyrun"] = anyrun_url_lookup(normalized)
                 provider_context["talos"] = talos_lookup_reference(normalized)
 
             elif ioc_type == "ip":
@@ -1476,6 +1245,7 @@ class IOCAnalyzer:
                 provider_context["talos"] = talos_lookup_reference(normalized)
                 provider_context["rdap"] = rdap_lookup_reference(normalized)
                 try:
+                    from email_analyzer.utils.whois_utils import whois_lookup
                     provider_context["whois"] = whois_lookup(normalized)
                 except Exception as e:
                     self.logger.error("WHOIS lookup crashed for domain '%s': %s", normalized, str(e))
@@ -1555,7 +1325,11 @@ class IOCAnalyzer:
                     reasons.append("Brand impersonation detected (Microsoft)")
 
             reasons = dedup_reason_list(reasons)
-            category = "Malicious" if final_score >= 3 else "Clean"
+            category = (
+                "Malicious" if final_score >= 3
+                else "Clean" if self._has_clean_reputation(ioc_type, status, provider_context)
+                else "Unknown"
+            )
 
             if force_refresh or not cached:
                 set_cache(ioc_type, normalized, {
@@ -1566,6 +1340,12 @@ class IOCAnalyzer:
                     "reason": reasons,
                     "provider_context": provider_context,
                 })
+
+        category = (
+            "Malicious" if final_score >= 3
+            else "Clean" if self._has_clean_reputation(ioc_type, status, provider_context)
+            else "Unknown"
+        )
 
         return IOCRecord(
             raw=str(raw),
@@ -1599,13 +1379,13 @@ class IOCAnalyzer:
         2) normalize each IOC
         3) VT score each IOC
         4) tag whitelist / blocklist
-        5) classify as Malicious/Clean
+        5) classify as Malicious, corroborated Clean, or Unknown
 
         Returns JSON-friendly structure:
         {
           "extracted": {...},
           "results": [...],
-          "containers": {"malicious":[...], "clean":[...]},
+          "containers": {"malicious":[...], "clean":[...], "unknown":[...]},
           "counts": {...},
           "simple_iocs": {...}   <-- useful for existing reporter
         }
@@ -1619,6 +1399,7 @@ class IOCAnalyzer:
         results: List[IOCRecord] = []
         malicious: List[IOCRecord] = []
         clean: List[IOCRecord] = []
+        unknown: List[IOCRecord] = []
 
         self.logger.debug(f"======================Extracted IOCs:======================")
         def process(items: List[str], ioc_type: str) -> None:
@@ -1640,7 +1421,12 @@ class IOCAnalyzer:
                 record.reason = dedup_reason_list(record.reason or [])
 
                 results.append(record)
-                (malicious if record.category == "Malicious" else clean).append(record)
+                if record.category == "Malicious":
+                    malicious.append(record)
+                elif record.category == "Clean":
+                    clean.append(record)
+                else:
+                    unknown.append(record)
 
         process(extracted["ips"], "ip")
         process(extracted["domains"], "domain")
@@ -1676,11 +1462,13 @@ class IOCAnalyzer:
             "containers": {
                 "malicious": [r.__dict__ for r in malicious],
                 "clean": [r.__dict__ for r in clean],
+                "unknown": [r.__dict__ for r in unknown],
             },
             "counts": {
                 "total": len(results),
                 "malicious": len(malicious),
                 "clean": len(clean),
+                "unknown": len(unknown),
                 "ips": len(extracted["ips"]),
                 "domains": len(extracted["domains"]),
                 "urls": len(extracted["urls"]),
@@ -1712,7 +1500,7 @@ class IOCAnalyzer:
         This can be extended with additional fields as needed.
         """
         return {
-            "classification": classification,  # "Malicious" or "Clean"
+            "classification": classification,
             "Severity": severity,              # "High", "Medium", "Low", "Informational"
             "score": score,                    # VT malicious hits count
             "reason": reason,                  # Explanation of classification
@@ -1763,7 +1551,7 @@ class IOCAnalyzer:
         # AbuseIPDB
         # AlienVault OTX
 
-        classification = "Malicious" if score >= 3 else "Clean"
+        classification = "Malicious" if score >= 3 else "Unknown"
 
         return {
             "ioc_type": "url",
@@ -1808,7 +1596,7 @@ class IOCAnalyzer:
             score += 4
             reason.append("Known malicious file hash")
 
-        classification = "Malicious" if score >= 1 else "Clean"
+        classification = "Malicious" if score >= 1 else "Unknown"
 
         return {
             "ioc_type" : "attachment",
