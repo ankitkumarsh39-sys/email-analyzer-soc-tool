@@ -22,12 +22,15 @@ from __future__ import annotations
 
 import re
 import logging
+import html
+import ipaddress
 from typing import List, Tuple, Dict, Any, Set
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 # Module-level logger (inherits handlers & levels from main.py)
 logger = logging.getLogger(__name__)
+ZERO_WIDTH_RE = re.compile(r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]")
 
 
 def sanitize_ioc_text(text: str) -> str:
@@ -35,7 +38,8 @@ def sanitize_ioc_text(text: str) -> str:
     if not text:
         return ""
 
-    soup = BeautifulSoup(str(text).replace("\x00", ""), "html.parser")
+    cleaned = html.unescape(ZERO_WIDTH_RE.sub("", str(text).replace("\x00", "")))
+    soup = BeautifulSoup(cleaned, "html.parser")
     linked_values = [
         str(value)
         for tag in soup.find_all(True)
@@ -43,7 +47,10 @@ def sanitize_ioc_text(text: str) -> str:
         if (value := tag.get(attribute))
     ]
     visible_text = soup.get_text(" ", strip=True)
-    return " ".join(part for part in (visible_text, *linked_values) if part)
+    return ZERO_WIDTH_RE.sub(
+        "",
+        html.unescape(" ".join(part for part in (visible_text, *linked_values) if part)),
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -76,7 +83,7 @@ def normalize_ioc(ioc: str, ioc_type: str | None = None) -> str:
         return ""
 
     cleaned = (
-        re.sub(r"<[^>]*>", "", str(ioc).replace("\x00", ""))
+        html.unescape(ZERO_WIDTH_RE.sub("", re.sub(r"<[^>]*>", "", str(ioc).replace("\x00", ""))))
            .replace("[.]", ".")          # defanged dot
            .replace("(.)", ".")          # defanged dot alt
            .replace("[://]", "://")      # defanged scheme separator
@@ -87,7 +94,14 @@ def normalize_ioc(ioc: str, ioc_type: str | None = None) -> str:
            .replace("hxxp", "http")          # defanged http without ://
            .strip()
     )
-
+    cleaned = cleaned.rstrip(".,;:!?")
+    while cleaned.endswith(")") and cleaned.count("(") < cleaned.count(")"):
+        cleaned = cleaned[:-1]
+    if ioc_type == "ip":
+        try:
+            return str(ipaddress.ip_address(cleaned))
+        except ValueError:
+            pass
     # Keep URL case if requested; otherwise normalize case
     if ioc_type == "url":
         return cleaned
@@ -101,6 +115,7 @@ def normalize_ioc(ioc: str, ioc_type: str | None = None) -> str:
 # - This does not enforce 0-255 strictly (that requires heavier logic),
 #   but works well for IOC extraction in SOC triage.
 IP_REGEX = re.compile(r"\b(?:(?:\d{1,3})(?:\.\d{1,3}){3})\b")
+IPV6_REGEX = re.compile(r"(?<![0-9a-f:])(?:[0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}(?![0-9a-f:])", re.IGNORECASE)
 
 # Domain/hostname only (NO paths):
 # - Ensures we capture only hostnames like: example.com, sub.example.co.in
@@ -201,7 +216,14 @@ def extract_iocs_from_text(text: str) -> Tuple[List[str], List[str], List[str], 
     # -------------------------
     # Step 3: Extract IPs + Domains + Hashes
     # -------------------------
-    ips = _unique_sorted(IP_REGEX.findall(text_refanged))
+    ipv6_values = []
+    for match in IPV6_REGEX.finditer(text_refanged):
+        try:
+            ipv6_values.append(str(ipaddress.ip_address(match.group(0))))
+        except ValueError:
+            continue
+    text_without_ipv6 = IPV6_REGEX.sub(" ", text_refanged)
+    ips = _unique_sorted(IP_REGEX.findall(text_without_ipv6) + ipv6_values)
 
     domains = _unique_sorted(DOMAIN_REGEX.findall(text_refanged))
 

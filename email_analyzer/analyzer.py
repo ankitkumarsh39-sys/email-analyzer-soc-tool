@@ -46,6 +46,7 @@ from bs4 import BeautifulSoup
 
 from collections import Counter
 from email.header import decode_header
+import tldextract
 
 
 
@@ -64,6 +65,12 @@ logger = logging.getLogger(__name__)
 
 # Project root helps build stable paths to config / reports
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_TLD_EXTRACT = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None)
+HASH_TOKEN_RE = re.compile(r"(?i)(?<![a-f0-9])(?:[a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64})(?![a-f0-9])")
+EXPLICIT_BODY_HASH_RE = re.compile(
+    r"(?i)\b(?:md5|sha-?1|sha-?256|file\s+hash(?:es)?|hash)\b\s*(?:is\b|[:=])\s*[`\"']?"
+    r"([a-f0-9]{64}|[a-f0-9]{40}|[a-f0-9]{32})(?![a-f0-9])"
+)
 
 # Simple URL regex for extracting plain URLs from text/html
 URL_REGEX = re.compile(r"\bhttps?://[^\s<>\"')]+", re.IGNORECASE)
@@ -861,7 +868,8 @@ def decode_attachment_payload(payload: Any) -> Optional[bytes]:
 
     if isinstance(payload, str):
         try:
-            return base64.b64decode(payload, validate=True)
+            compact_payload = re.sub(r"\s+", "", payload)
+            return base64.b64decode(compact_payload, validate=True)
         except Exception:
             # If not base64, keep raw bytes from string
             return payload.encode(errors="ignore")
@@ -968,6 +976,28 @@ def _domain_from_addr(text: str) -> str:
     m = re.search(r'[\w\.\-+%]+@([\w\.\-]+\.[A-Za-z]{2,})', str(text))
     return m.group(1).lower() if m else ""
 
+
+def _registered_domain(domain: str) -> str:
+    """Return a PSL-based registrable domain without fetching a suffix list."""
+    try:
+        extracted = _TLD_EXTRACT(domain.strip().rstrip(".").lower())
+    except (TypeError, ValueError):
+        return ""
+    return extracted.top_domain_under_public_suffix.lower()
+
+
+def _has_malicious_count(value: Any) -> bool:
+    try:
+        return int(value or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def extract_explicit_body_hashes(body_text: str) -> List[str]:
+    """Only keep body hashes explicitly labeled as hashes or digest values."""
+    return sorted({match.lower() for match in EXPLICIT_BODY_HASH_RE.findall(body_text or "")})
+
+
 #---------------------------------------------------------------------
 
 def _header_mismatch_flags(headers: Dict[str, Any]) -> Dict[str, Any]:
@@ -987,6 +1017,16 @@ def _header_mismatch_flags(headers: Dict[str, Any]) -> Dict[str, Any]:
     return_dom = _domain_from_addr(return_path)
     sender_dom = _domain_from_addr(sender)
 
+    registered_domains = {
+        role: _registered_domain(domain)
+        for role, domain in (
+            ("from", from_dom),
+            ("reply_to", reply_dom),
+            ("return_path", return_dom),
+            ("sender", sender_dom),
+        )
+    }
+
     return {
         "from_domain": from_dom,
         "reply_to_domain": reply_dom,
@@ -995,6 +1035,19 @@ def _header_mismatch_flags(headers: Dict[str, Any]) -> Dict[str, Any]:
         "reply_to_mismatch": bool(reply_dom and from_dom and reply_dom != from_dom),
         "return_path_mismatch": bool(return_dom and from_dom and return_dom != from_dom),
         "sender_mismatch": bool(sender_dom and from_dom and sender_dom != from_dom),
+        "registered_domains": registered_domains,
+        "reply_to_org_mismatch": bool(
+            registered_domains["reply_to"] and registered_domains["from"]
+            and registered_domains["reply_to"] != registered_domains["from"]
+        ),
+        "return_path_org_mismatch": bool(
+            registered_domains["return_path"] and registered_domains["from"]
+            and registered_domains["return_path"] != registered_domains["from"]
+        ),
+        "sender_org_mismatch": bool(
+            registered_domains["sender"] and registered_domains["from"]
+            and registered_domains["sender"] != registered_domains["from"]
+        ),
     }
 
 
@@ -1130,6 +1183,11 @@ def analyze_sender_intelligence(
         else "fail" if re.search(r"\bdmarc\s*=\s*(?:fail|permerror)\b", authentication_text)
         else "unknown"
     )
+    dkim_auth = (
+        "pass" if re.search(r"\bdkim\s*=\s*pass\b", authentication_text)
+        else "fail" if re.search(r"\bdkim\s*=\s*(?:fail|permerror)\b", authentication_text)
+        else "unknown"
+    )
 
     existing_iocs = {
         (str(item.get("ioc_type", "")).lower(), str(item.get("normalized", "")).lower()): item
@@ -1221,7 +1279,7 @@ def analyze_sender_intelligence(
     low_risk_domains = []
     mismatch_detected = any(
         mismatch_flags.get(flag)
-        for flag in ("reply_to_mismatch", "return_path_mismatch", "sender_mismatch")
+        for flag in ("reply_to_org_mismatch", "return_path_org_mismatch", "sender_org_mismatch")
     )
 
     for domain, roles in sorted(domain_roles.items()):
@@ -1324,9 +1382,6 @@ def analyze_sender_intelligence(
             domain_reasons.append(
                 f"VirusTotal reports {indicator['virustotal']['malicious']} malicious detection(s)."
             )
-        if mismatch_detected:
-            score += 15
-            domain_reasons.append("Sender header domains do not align.")
         try:
             age_days = int(age_days) if age_days is not None else None
         except (TypeError, ValueError):
@@ -1343,10 +1398,10 @@ def analyze_sender_intelligence(
         if dns["dmarc"]["status"] in {"ok", "no_records"} and not dmarc_records:
             score += 8
             domain_reasons.append("No DMARC record was found.")
-        if spf_auth == "fail":
+        if spf_auth == "fail" and "From" in roles:
             score += 10
             domain_reasons.append("SPF authentication failed.")
-        if dmarc_auth == "fail":
+        if dmarc_auth == "fail" and "From" in roles:
             score += 15
             domain_reasons.append("DMARC authentication failed.")
         if indicator["whitelisted"]:
@@ -1431,9 +1486,16 @@ def analyze_sender_intelligence(
             and not indicator["blocklisted"]
         )
         reasons.extend(f"{ip}: {reason}" for reason in ip_reasons)
+        sources = ip_sources.get(ip, [])
+        ip_roles = []
+        if any(source in {"X-Originating-IP", "X-Sender-IP", "X-Client-IP", "Authentication-Results", "Received-SPF"} for source in sources):
+            ip_roles.append("originating")
+        if "Received" in sources:
+            ip_roles.append("received_infrastructure")
         ips_out.append({
             "ip": ip,
-            "sources": ip_sources.get(ip, []),
+            "sources": sources,
+            "roles": ip_roles,
             "virustotal": indicator["virustotal"],
             "abuseipdb": abuseipdb,
             "talos": providers.get("talos", {}) or talos_lookup_reference(ip),
@@ -1444,7 +1506,29 @@ def analyze_sender_intelligence(
             "reasons": ip_reasons,
         })
 
-    risk_score = min(100, sum(indicator_scores.values()))
+    mismatch_corroborated = mismatch_detected and (
+        spf_auth == "fail"
+        or dkim_auth == "fail"
+        or dmarc_auth == "fail"
+        or any(
+            domain.get("blocklisted")
+            or _has_malicious_count((domain.get("virustotal", {}) or {}).get("malicious"))
+            or (
+                isinstance(domain.get("domain_age_days"), int)
+                and domain["domain_age_days"] < 90
+            )
+            for domain in domains_out
+        )
+    )
+    mismatch_reasons = []
+    if mismatch_detected:
+        mismatch_reasons.append("Sender header organizational domains differ.")
+    if mismatch_corroborated:
+        mismatch_reasons.append(
+            "Domain alignment mismatch is corroborated by authentication, reputation, or domain-age evidence."
+        )
+    reasons.extend(mismatch_reasons)
+    risk_score = min(100, sum(indicator_scores.values()) + (10 if mismatch_corroborated else 0))
     if risk_score >= 60:
         verdict = "High Risk"
     elif risk_score >= 30:
@@ -1466,10 +1550,17 @@ def analyze_sender_intelligence(
         "risk_score": risk_score,
         "verdict": verdict,
         "reasons": reasons,
-        "authentication": {"spf": spf_auth, "dmarc": dmarc_auth},
+        "authentication": {"spf": spf_auth, "dkim": dkim_auth, "dmarc": dmarc_auth},
         "sender_addresses": sender_addresses,
         "domains": domains_out,
         "ips": ips_out,
+        "originating_ips": [
+            ip["ip"] for ip in ips_out if "originating" in ip.get("roles", [])
+        ],
+        "received_infrastructure_ips": [
+            ip["ip"] for ip in ips_out if "received_infrastructure" in ip.get("roles", [])
+        ],
+        "organizational_mismatch_corroborated": mismatch_corroborated,
     }
 
 
@@ -1635,14 +1726,26 @@ def calculate_email_severity_score(email_data: Dict[str, Any]) -> Dict[str, Any]
 
     mismatch_flags = email_data.get("header_analysis", {}).get("mismatch_flags", {})
     if isinstance(mismatch_flags, dict):
-        mismatch_count = sum(
-            1 for k, v in mismatch_flags.items()
-            if k.endswith("_mismatch") and bool(v)
+        has_org_mismatch = any(
+            mismatch_flags.get(key)
+            for key in ("reply_to_org_mismatch", "return_path_org_mismatch", "sender_org_mismatch")
         )
-
-        if mismatch_count:
-            score += mismatch_count  # each mismatch adds 1 to score
-            reason.append(f"{mismatch_count} header domain mismatches detected\n\n")
+        sender_domains = (
+            email_data.get("sender_intelligence", {}).get("domains", []) or []
+        )
+        auth_failure = bool(re.search(r"\b(?:spf|dkim|dmarc)\s*=\s*(?:fail|softfail|permerror)\b", auth_text))
+        reputation_or_age_evidence = any(
+            domain.get("blocklisted")
+            or _has_malicious_count((domain.get("virustotal", {}) or {}).get("malicious"))
+            or (
+                isinstance(domain.get("domain_age_days"), int)
+                and domain["domain_age_days"] < 90
+            )
+            for domain in sender_domains
+        )
+        if has_org_mismatch and (auth_failure or reputation_or_age_evidence):
+            score += 1
+            reason.append("Organizational sender-domain mismatch with corroborating evidence")
 
     #------------------------------------------------------------------------------------
     # Finalize score and reason
@@ -1767,6 +1870,7 @@ def reanalyze_ioc_in_email_data(email_data: Dict[str, Any], normalized_value: st
             **{"auth_results": email_data.get("auth_results", "")},
             **{"header_analysis": email_data.get("header_analysis", {})},
             **{"subject_analysis": email_data.get("subject_analysis", {})},
+            **{"sender_intelligence": email_data.get("sender_intelligence", {})},
         })
 
         email_data["email_score"] = severity_data.get("email_score", 0)
@@ -1829,7 +1933,9 @@ def build_targeted_header_ioc_text(
             if raw:
                 parts.append(str(raw))
 
-    return "\n".join(parts)
+    # Header identifiers can resemble file hashes; only body/attachment hashes are reportable IOCs.
+    hash_pattern = re.compile(r"(?i)(?<![a-f0-9])(?:[a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64})(?![a-f0-9])")
+    return "\n".join(hash_pattern.sub("[header hash omitted]", part) for part in parts)
 
 
 #----------------------------------------------------------------------------------------
@@ -2034,6 +2140,16 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
     # Advanced IOC analysis (VT / whitelist / blocklist)
     # -------------------------------------------------------------------------
     html_text_for_iocs = BeautifulSoup(text_html, "html.parser").get_text(" ", strip=True) if text_html else ""
+    body_hashes = extract_explicit_body_hashes(f"{text_plain}\n{html_text_for_iocs}")
+    hash_sources: Dict[str, List[str]] = {}
+    for digest in attachment_hashes:
+        hash_sources.setdefault(digest.lower(), [])
+        if "attachment" not in hash_sources[digest.lower()]:
+            hash_sources[digest.lower()].append("attachment")
+    for digest in body_hashes:
+        hash_sources.setdefault(digest, [])
+        if "body" not in hash_sources[digest]:
+            hash_sources[digest].append("body")
 
     #----------------------------------------------------------
     # Build full IOC input text by combining:
@@ -2058,11 +2174,10 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
         received_hops=received,
     ) + "\n"
 
-    # Add attachment SHA256 values so they are scored as normal hash IOCs
-    
-    if attachment_hashes:
-        unique_attachment_hashes = sorted(set(attachment_hashes))
-        combined_text += "\n".join(unique_attachment_hashes) + "\n"
+    # Remove IDs and tracking tokens from every text source, then add verified hashes.
+    combined_text = HASH_TOKEN_RE.sub("", combined_text)
+    if hash_sources:
+        combined_text += "\n".join(sorted(hash_sources)) + "\n"
 
     osint_summary: Dict[str, Any] = {}
     defanged_ioc_text = ""
@@ -2093,6 +2208,10 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
 
         # Detailed VT scoring rows for final report
         ioc_scoring = scored["results"]
+        for item in ioc_scoring:
+            if str(item.get("ioc_type", "")).lower() == "hash":
+                digest = str(item.get("normalized") or "").lower()
+                item["hash_sources"] = hash_sources.get(digest, [])
         defanged_ioc_text = build_defanged_ioc_text(iocs)
 
         try:
@@ -2226,6 +2345,7 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
     **{"auth_results": auth_results},
     **{"header_analysis": {"mismatch_flags": mismatch_flags}},
     **{"subject_analysis": subject_analysis},
+    **{"sender_intelligence": sender_intelligence},
     })
 
 # Final output used by mail_reporter.py
@@ -2260,6 +2380,7 @@ def analyze_email(input_path: str, force_reanalyze_iocs: bool = False) -> Option
         "urls_extracted_detail": url_evidence,
 
         "iocs": iocs,
+        "hash_sources": hash_sources,
         "attachments": attachments_info,
         "sender_domains": list(sender_domains),
         "sender_intelligence": sender_intelligence,

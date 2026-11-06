@@ -8,3 +8,4 @@ iocextract>=1.14.0
 python-dotenv>=1.0.0
 openpyxl>=3.0.0
 python-docx>=1.1.0
+tldextract>=5.1.0,<6.0

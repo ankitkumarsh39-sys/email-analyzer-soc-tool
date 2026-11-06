@@ -53,6 +53,7 @@ from urllib.parse import quote
 import requests
 import iocextract
 from dotenv import load_dotenv
+from ioc_lib.ioc_validator import normalize_ioc as normalize_ioc_value
 from ioc_lib.ioc_validator import sanitize_ioc_text
 
 from ioc_lib.ioc_cache import get_cached, set_cache
@@ -941,7 +942,7 @@ class IOCAnalyzer:
     # IOC normalize / refang
     # -------------------------------------------------------------------------
     def normalize_ip(self, ip: str) -> str:
-        return re.sub(r"<[^>]*>", "", str(ip).replace("\x00", "")).replace("[.]", ".").replace("(.)", ".")
+        return normalize_ioc_value(ip, "ip")
 
     def normalize_ioc(self, ioc: str, ioc_type: str) -> str:
         """
@@ -951,20 +952,7 @@ class IOCAnalyzer:
         - URLs keep case because URL path/query can be case-sensitive
         - other IOC types are lowercased
         """
-        cleaned = (
-            re.sub(r"<[^>]*>", "", str(ioc).replace("\x00", ""))
-            .replace("[.]", ".")
-            .replace("(.)", ".")
-            .replace("{.}", ".")
-            .replace("[://]", "://")
-            .replace("hxxps://", "https://")
-            .replace("hxxp://", "http://")
-            .replace("hxxps", "https://")
-            .replace("hxxp", "http")
-            .replace("[:]", ":")
-            .strip()
-        )
-        return cleaned if ioc_type == "url" else cleaned.lower()
+        return normalize_ioc_value(ioc, ioc_type)
 
     # -------------------------------------------------------------------------
     # IOC extraction
